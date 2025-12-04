@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stroll App - Nearby POI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Clarendon', 'Georgia', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .phone-container {
+            width: 320px;
+            height: 600px;
+            background: linear-gradient(180deg, #a8d5ba 0%, #6fb583 50%, #4a9b63 100%);
+            border-radius: 30px;
+            padding: 40px 25px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .back-arrow {
+            position: absolute;
+            top: 30px;
+            left: 25px;
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .content {
+            position: relative;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 220px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-bottom: 15px;
+        }
+
+        .map-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .poi-box {
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .poi-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 6px;
+        }
+
+        .poi-distance {
+            font-size: 15px;
+            color: #718096;
+        }
+
+        .button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Clarendon', 'Georgia', serif;
+            background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139,90,60,0.4);
+        }
+
+        .button:hover {
+            box-shadow: 0 6px 20px rgba(139,90,60,0.5);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="back-arrow">‹</div>
+        
+        <div class="content">
+            <div class="map-container">
+                <svg class="map-image" viewBox="0 0 270 280" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Background -->
+                    <rect width="270" height="280" fill="#e8f5e9"/>
+                    
+                    <!-- Roads -->
+                    <line x1="0" y1="140" x2="270" y2="140" stroke="#cbd5e0" stroke-width="8"/>
+                    <line x1="135" y1="0" x2="135" y2="280" stroke="#cbd5e0" stroke-width="8"/>
+                    
+                    <!-- Green spaces (parks) -->
+                    <rect x="20" y="20" width="80" height="80" fill="#81c784" rx="8"/>
+                    <rect x="170" y="170" width="80" height="80" fill="#81c784" rx="8"/>
+                    
+                    <!-- Buildings -->
+                    <rect x="150" y="30" width="40" height="50" fill="#a0aec0" rx="4"/>
+                    <rect x="200" y="40" width="35" height="60" fill="#a0aec0" rx="4"/>
+                    <rect x="30" y="160" width="50" height="45" fill="#a0aec0" rx="4"/>
+                    <rect x="90" y="175" width="30" height="55" fill="#a0aec0" rx="4"/>
+                    
+                    <!-- Location pin (user location) -->
+                    <circle cx="135" cy="140" r="20" fill="#4a9b63" opacity="0.3"/>
+                    <circle cx="135" cy="140" r="10" fill="#4a9b63"/>
+                    <circle cx="135" cy="140" r="5" fill="white"/>
+                    
+                    <!-- POI marker (coffee shop) -->
+                    <g transform="translate(180, 90)">
+                        <path d="M 0 -20 Q -8 -20, -8 -12 L -8 12 Q -8 20, 0 20 Q 8 20, 8 12 L 8 -12 Q 8 -20, 0 -20 Z" fill="#8b5a3c"/>
+                        <circle cx="0" cy="25" r="3" fill="#8b5a3c"/>
+                    </g>
+                </svg>
+            </div>
+            
+            <h1>Nearby POI</h1>
+            
+            <div class="poi-box">
+                <div class="poi-name">Coffee Shop</div>
+                <div class="poi-distance">0.2 mi</div>
+            </div>
+            
+            <button class="button">See Details</button>
+        </div>
+    </div>
+        <script type="module">
+  // Import the Firebase services you use
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  // Your Firebase config
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+  authDomain: "stroll-c5285.firebaseapp.com",
+  projectId: "stroll-c5285",
+  storageBucket: "stroll-c5285.firebasestorage.app",
+  messagingSenderId: "465458957302",
+  appId: "1:465458957302:web:1b104b86069514164615d7",
+  measurementId: "G-PZY4GX7SSE"
+};
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  console.log("Firebase Connected!");
+</script>
+
+</body>
+</html>

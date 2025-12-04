@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stroll App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Clarendon', 'Georgia', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .phone-container {
+            width: 320px;
+            height: 600px;
+            background: linear-gradient(180deg, #a8d5ba 0%, #6fb583 50%, #4a9b63 100%);
+            border-radius: 30px;
+            padding: 40px 25px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .back-arrow {
+            position: absolute;
+            top: 30px;
+            left: 25px;
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .sky-buildings {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(180deg, #d4f0e1 0%, #b5ddc4 100%);
+            z-index: 1;
+        }
+
+        .building-skyline {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 0 10px;
+            opacity: 0.4;
+        }
+
+        .skyscraper {
+            background: linear-gradient(180deg, #5a9b6d 0%, #4a8b5d 100%);
+            border-radius: 2px 2px 0 0;
+            position: relative;
+        }
+
+        .sky-1 { width: 25px; height: 140px; }
+        .sky-2 { width: 30px; height: 160px; }
+        .sky-3 { width: 22px; height: 120px; }
+        .sky-4 { width: 35px; height: 180px; }
+        .sky-5 { width: 28px; height: 150px; }
+        .sky-6 { width: 32px; height: 145px; }
+        .sky-7 { width: 26px; height: 130px; }
+        .sky-8 { width: 30px; height: 155px; }
+
+        .sun {
+            position: absolute;
+            top: 60px;
+            right: 50px;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ffe5a0 0%, #ffd700 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255,215,0,0.4);
+            z-index: 2;
+        }
+
+        .park-ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 380px;
+            background: linear-gradient(180deg, #6fb583 0%, #4a9b63 100%);
+            z-index: 3;
+        }
+
+        .tree-container {
+            position: absolute;
+            z-index: 7;
+        }
+
+        .tree {
+            font-size: 45px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .tree-1 { top: 160px; left: 15px; }
+        .tree-2 { top: 150px; right: 20px; }
+        .tree-3 { top: 200px; left: 60px; }
+        .tree-4 { top: 190px; right: 70px; }
+
+        .path-svg {
+            position: absolute;
+            top: 180px;
+            left: 0;
+            width: 100%;
+            height: 250px;
+            z-index: 5;
+        }
+
+        .person {
+            position: absolute;
+            font-size: 24px;
+            z-index: 6;
+            animation: walk 2s ease-in-out infinite;
+        }
+
+        @keyframes walk {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .person-1 { top: 220px; left: 50px; animation-delay: 0s; }
+        .person-2 { top: 235px; left: 130px; animation-delay: 0.5s; }
+        .person-3 { top: 230px; right: 80px; animation-delay: 1s; }
+        .person-4 { top: 260px; left: 180px; animation-delay: 1.5s; }
+
+        .bike {
+            position: absolute;
+            font-size: 28px;
+            z-index: 6;
+        }
+
+        .bike-1 { top: 255px; left: 90px; }
+        .bike-2 { top: 240px; right: 120px; }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            margin-top: 300px;
+        }
+
+        h2 {
+            color: rgba(255,255,255,0.9);
+            font-size: 16px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            color: white;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Clarendon', 'Georgia', serif;
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .signup-btn {
+            background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%);
+            color: white;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(139,90,60,0.4);
+        }
+
+        .signup-btn:hover {
+            box-shadow: 0 6px 20px rgba(139,90,60,0.5);
+        }
+
+        .login-btn {
+            background: white;
+            color: #4a9b63;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .login-btn:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .city-buildings {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 8;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .building {
+            background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+            position: relative;
+        }
+
+        .building-left-1 { width: 45px; height: 170px; margin-left: 0; }
+        .building-left-2 { width: 50px; height: 200px; margin-left: -20px; }
+        .building-left-3 { width: 38px; height: 140px; margin-left: -18px; }
+
+        .building-right-1 { width: 40px; height: 150px; margin-right: -18px; }
+        .building-right-2 { width: 52px; height: 200px; margin-right: -20px; }
+        .building-right-3 { width: 46px; height: 175px; margin-right: 0; }
+
+        .window {
+            position: absolute;
+            width: 4px;
+            height: 5px;
+            background: rgba(255, 215, 0, 0.5);
+        }
+
+        .cloud {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 30px;
+            z-index: 2;
+        }
+
+        .cloud-1 { top: 80px; left: 40px; }
+        .cloud-2 { top: 100px; right: 60px; }
+        .cloud-3 { top: 120px; left: 120px; }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="back-arrow">‹</div>
+        
+        <!-- Sky and background buildings -->
+        <div class="sky-buildings">
+            <div class="building-skyline">
+                <div class="skyscraper sky-1"></div>
+                <div class="skyscraper sky-2"></div>
+                <div class="skyscraper sky-3"></div>
+                <div class="skyscraper sky-4"></div>
+                <div class="skyscraper sky-5"></div>
+                <div class="skyscraper sky-6"></div>
+                <div class="skyscraper sky-7"></div>
+                <div class="skyscraper sky-8"></div>
+            </div>
+        </div>
+
+        <div class="sun"></div>
+
+        <div class="cloud cloud-1">☁️</div>
+        <div class="cloud cloud-2">☁️</div>
+        <div class="cloud cloud-3">☁️</div>
+
+        <!-- Park ground -->
+        <div class="park-ground"></div>
+
+        <!-- Trees -->
+        <div class="tree-container tree-1">
+            <div class="tree">🌳</div>
+        </div>
+        <div class="tree-container tree-2">
+            <div class="tree">🌳</div>
+        </div>
+        <div class="tree-container tree-3">
+            <div class="tree">🌲</div>
+        </div>
+        <div class="tree-container tree-4">
+            <div class="tree">🌲</div>
+        </div>
+
+        <!-- Walking paths -->
+        <svg class="path-svg" viewBox="0 0 270 250" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 10 60 C 40 50, 70 45, 100 50 S 150 60, 180 55 S 220 45, 260 50" 
+                  stroke="rgba(255,255,255,0.5)" 
+                  stroke-width="6" 
+                  fill="none" 
+                  stroke-linecap="round"/>
+            
+            <path d="M 5 100 C 50 90, 90 110, 130 105 S 180 95, 220 105 S 250 115, 270 110" 
+                  stroke="rgba(255,255,255,0.45)" 
+                  stroke-width="6" 
+                  fill="none" 
+                  stroke-linecap="round"/>
+            
+            <path d="M 20 140 C 60 135, 100 145, 140 140 S 190 130, 230 135" 
+                  stroke="rgba(255,255,255,0.4)" 
+                  stroke-width="5" 
+                  fill="none" 
+                  stroke-linecap="round"/>
+        </svg>
+
+        <!-- People and bikes -->
+        <div class="person person-1">🚶‍♀️</div>
+        <div class="person person-2">🚶</div>
+        <div class="person person-3">🚶‍♂️</div>
+        <div class="person person-4">👨‍🦯</div>
+        <div class="bike bike-1">🚴</div>
+        <div class="bike bike-2">🚴‍♀️</div>
+
+        <!-- Content -->
+        <div class="content">
+            <h2>Welcome to</h2>
+            <h1>Stroll</h1>
+            
+            <button class="button signup-btn">Sign up</button>
+            <button class="button login-btn">Login</button>
+        </div>
+
+        <!-- Foreground buildings -->
+        <div class="city-buildings">
+            <div style="display: flex; align-items: flex-end;">
+                <div class="building building-left-1">
+                    <div class="window" style="top: 30px; left: 12px;"></div>
+                    <div class="window" style="top: 30px; left: 22px;"></div>
+                    <div class="window" style="top: 50px; left: 12px;"></div>
+                    <div class="window" style="top: 50px; left: 22px;"></div>
+                    <div class="window" style="top: 70px; left: 12px;"></div>
+                    <div class="window" style="top: 70px; left: 22px;"></div>
+                </div>
+                <div class="building building-left-2">
+                    <div class="window" style="top: 30px; left: 14px;"></div>
+                    <div class="window" style="top: 30px; left: 26px;"></div>
+                    <div class="window" style="top: 55px; left: 14px;"></div>
+                    <div class="window" style="top: 55px; left: 26px;"></div>
+                    <div class="window" style="top: 80px; left: 14px;"></div>
+                    <div class="window" style="top: 80px; left: 26px;"></div>
+                </div>
+                <div class="building building-left-3">
+                    <div class="window" style="top: 30px; left: 10px;"></div>
+                    <div class="window" style="top: 30px; left: 20px;"></div>
+                    <div class="window" style="top: 50px; left: 10px;"></div>
+                    <div class="window" style="top: 50px; left: 20px;"></div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+                <div class="building building-right-1">
+                    <div class="window" style="top: 30px; left: 10px;"></div>
+                    <div class="window" style="top: 30px; left: 20px;"></div>
+                    <div class="window" style="top: 50px; left: 10px;"></div>
+                    <div class="window" style="top: 50px; left: 20px;"></div>
+                </div>
+                <div class="building building-right-2">
+                    <div class="window" style="top: 30px; left: 15px;"></div>
+                    <div class="window" style="top: 30px; left: 27px;"></div>
+                    <div class="window" style="top: 55px; left: 15px;"></div>
+                    <div class="window" style="top: 55px; left: 27px;"></div>
+                    <div class="window" style="top: 80px; left: 15px;"></div>
+                    <div class="window" style="top: 80px; left: 27px;"></div>
+                </div>
+                <div class="building building-right-3">
+                    <div class="window" style="top: 30px; left: 13px;"></div>
+                    <div class="window" style="top: 30px; left: 23px;"></div>
+                    <div class="window" style="top: 55px; left: 13px;"></div>
+                    <div class="window" style="top: 55px; left: 23px;"></div>
+                    <div class="window" style="top: 75px; left: 13px;"></div>
+                    <div class="window" style="top: 75px; left: 23px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+  // Import the Firebase services you use
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  // Your Firebase config
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+  authDomain: "stroll-c5285.firebaseapp.com",
+  projectId: "stroll-c5285",
+  storageBucket: "stroll-c5285.firebasestorage.app",
+  messagingSenderId: "465458957302",
+  appId: "1:465458957302:web:1b104b86069514164615d7",
+  measurementId: "G-PZY4GX7SSE"
+};
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  console.log("Firebase Connected!");
+</script>
+
+
+</body>
+</html>
