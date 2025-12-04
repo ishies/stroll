@@ -381,7 +381,8 @@
             <h1>Sign In</h1>
             <p class="subtitle">Welcome back to Stroll</p>
             
-            <form>
+            <div id="signin-error" style="display:none;color:#ffe5e5;background:rgba(0,0,0,0.15);padding:8px;border-radius:8px;margin-bottom:12px;font-size:13px;"></div>
+            <form id="signin-form" novalidate>
                 <div class="form-group">
                     <label class="form-label" for="email">Email</label>
                     <input type="email" id="email" class="form-input" placeholder="your@email.com" required>
@@ -400,7 +401,7 @@
             </form>
             
             <div class="signup-link">
-                Don't have an account? <a href="#">Sign Up</a>
+                Don't have an account? <a href="stroll-signup.html">Sign Up</a>
             </div>
         </div>
 
@@ -479,6 +480,36 @@ const firebaseConfig = {
   const auth = getAuth(app);
 
   console.log("Firebase Connected!");
+
+    // Sign-in form handling using Firebase Auth
+    const signinForm = document.getElementById('signin-form');
+    const signinError = document.getElementById('signin-error');
+
+    if (signinForm) {
+        signinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            signinError.style.display = 'none';
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log('Signed in:', userCredential.user);
+                // Redirect to the main POI page after successful sign-in
+                window.location.href = 'stroll-poi.html';
+            } catch (err) {
+                console.error('Sign-in error', err);
+                let msg = 'Sign-in failed. Please check your email and password.';
+                if (err && err.code) {
+                    if (err.code === 'auth/user-not-found') msg = 'No account found for that email.';
+                    else if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
+                    else if (err.code === 'auth/invalid-email') msg = 'Invalid email address.';
+                }
+                signinError.textContent = msg;
+                signinError.style.display = 'block';
+            }
+        });
+    }
 </script>
 
 </body>

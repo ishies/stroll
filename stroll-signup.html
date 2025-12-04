@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stroll App - Sign Up</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Clarendon', 'Georgia', serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .phone-container { width: 320px; height: 600px; background: linear-gradient(180deg, #a8d5ba 0%, #6fb583 50%, #4a9b63 100%); border-radius: 30px; padding: 40px 25px; position: relative; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .content { position: relative; z-index: 10; text-align: center; margin-top: 260px; }
+        h1 { color: white; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .subtitle { color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; text-align: left; }
+        .form-label { display: block; color: white; font-size: 14px; margin-bottom: 8px; font-weight: 600; }
+        .form-input { width: 100%; padding: 12px 14px; border: 2px solid rgba(255,255,255,0.3); border-radius: 12px; font-size: 15px; background: rgba(255,255,255,0.9); color: #333; font-family: 'Clarendon', 'Georgia', serif; }
+        .button { width: 100%; padding: 16px; border: none; border-radius: 15px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .signup-btn { background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%); color: white; box-shadow: 0 4px 15px rgba(139,90,60,0.4); }
+        .link-row { margin-top: 12px; color: white; font-size: 14px; }
+        .link-row a { color: white; font-weight: 700; text-decoration: none; }
+        #signup-error { display:none; color:#ffe5e5; background:rgba(0,0,0,0.15); padding:8px; border-radius:8px; margin-bottom:12px; font-size:13px; }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="content">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join Stroll — it only takes a minute</p>
+
+            <div id="signup-error"></div>
+            <form id="signup-form" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="signup-email">Email</label>
+                    <input type="email" id="signup-email" class="form-input" placeholder="your@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="signup-password">Password</label>
+                    <input type="password" id="signup-password" class="form-input" placeholder="Create a password" required>
+                </div>
+
+                <button type="submit" class="button signup-btn">Sign Up</button>
+            </form>
+
+            <div class="link-row">Already have an account? <a href="stroll-signin.html">Sign In</a></div>
+        </div>
+    </div>
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+      authDomain: "stroll-c5285.firebaseapp.com",
+      projectId: "stroll-c5285",
+      storageBucket: "stroll-c5285.firebasestorage.app",
+      messagingSenderId: "465458957302",
+      appId: "1:465458957302:web:1b104b86069514164615d7",
+      measurementId: "G-PZY4GX7SSE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const signupForm = document.getElementById('signup-form');
+    const signupError = document.getElementById('signup-error');
+
+    if (signupForm) {
+      signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        signupError.style.display = 'none';
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          console.log('User created:', userCredential.user);
+          // Redirect to survey page after signup
+          window.location.href = 'stroll-survey.html';
+        } catch (err) {
+          console.error('Signup error', err);
+          let msg = 'Sign-up failed. Please check the details and try again.';
+          if (err && err.code) {
+            if (err.code === 'auth/email-already-in-use') msg = 'That email is already in use.';
+            else if (err.code === 'auth/weak-password') msg = 'Password is too weak (min 6 chars).';
+            else if (err.code === 'auth/invalid-email') msg = 'Invalid email address.';
+          }
+          signupError.textContent = msg;
+          signupError.style.display = 'block';
+        }
+      });
+    }
+    </script>
+</body>
+</html>
