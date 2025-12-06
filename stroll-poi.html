@@ -173,29 +173,185 @@
             <button class="button">See Details</button>
         </div>
     </div>
-        <script type="module">
-  // Import the Firebase services you use
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+                <script type="module">
+    // Import the Firebase services you use
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  // Your Firebase config
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    // Your Firebase config
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
-  authDomain: "stroll-c5285.firebaseapp.com",
-  projectId: "stroll-c5285",
-  storageBucket: "stroll-c5285.firebasestorage.app",
-  messagingSenderId: "465458957302",
-  appId: "1:465458957302:web:1b104b86069514164615d7",
-  measurementId: "G-PZY4GX7SSE"
+    apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+    authDomain: "stroll-c5285.firebaseapp.com",
+    projectId: "stroll-c5285",
+    storageBucket: "stroll-c5285.firebasestorage.app",
+    messagingSenderId: "465458957302",
+    appId: "1:465458957302:web:1b104b86069514164615d7",
+    measurementId: "G-PZY4GX7SSE"
 };
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-  console.log("Firebase Connected!");
+    console.log("Firebase Connected!");
+
+    // Utility: parse centroid amenities into {amenity, frequency}[]
+    function parseAmenities(raw) {
+        if (!raw) return [];
+        
+        // Handle string format: "{(restaurant, 5), (park, 4), (school, 3), (ice cream, 3)}"
+        if (typeof raw === 'string') {
+            const tupleRegex = /\(\s*([^,]+?)\s*,\s*(\d+)\s*\)/g;
+            const matches = [];
+            let match;
+            while ((match = tupleRegex.exec(raw)) !== null) {
+                matches.push({
+                    amenity: match[1].trim(),
+                    frequency: Number(match[2]) || 1
+                });
+            }
+            if (matches.length > 0) {
+                console.log('Parsed amenities from string:', matches);
+                return matches;
+            }
+        }
+        
+        if (Array.isArray(raw)) {
+            return raw.map(item => {
+                if (Array.isArray(item)) {
+                    return { amenity: item[0], frequency: Number(item[1]) || 0 };
+                }
+                if (typeof item === 'object') {
+                    // Try common keys
+                    const amen = item.amenity || item.name || item[0] || item.amen;
+                    const freq = item.frequency || item.freq || item.count || 1;
+                    return { amenity: amen, frequency: Number(freq) || 0 };
+                }
+                return { amenity: String(item), frequency: 1 };
+            });
+        }
+        if (typeof raw === 'object') {
+            // object mapping
+            return Object.entries(raw).map(([k, v]) => ({ amenity: k, frequency: Number(v) || 0 }));
+        }
+        return [{ amenity: String(raw), frequency: 1 }];
+    }
+
+    function weightedPick(items) {
+        const total = items.reduce((s, it) => s + (Number(it.frequency) || 0), 0);
+        if (total <= 0) {
+            // equal weights
+            const idx = Math.floor(Math.random() * items.length);
+            return items[idx];
+        }
+        let r = Math.random() * total;
+        for (const it of items) {
+            r -= (Number(it.frequency) || 0);
+            if (r <= 0) return it;
+        }
+        return items[items.length - 1];
+    }
+
+    // Main: on auth ready, load recommendation
+    onAuthStateChanged(auth, async (user) => {
+        try {
+            if (!user) {
+                console.warn('No authenticated user - cannot personalize POI.');
+                return;
+            }
+
+            // 1) Find latest users doc for this uid (or fallback to email)
+            const usersRef = collection(db, 'users');
+            // Avoid composite index requirement by fetching all matches and picking the newest client-side
+            let q = query(usersRef, where('uid', '==', user.uid));
+            let snap = await getDocs(q);
+            if ((snap.empty || snap.size === 0) && user.email) {
+                q = query(usersRef, where('email', '==', user.email));
+                snap = await getDocs(q);
+            }
+
+            if (snap.empty) {
+                console.warn('No user survey profile found for', user.uid, user.email);
+                return;
+            }
+
+            // Pick the most recent doc by CreatedAt (ISO string) when possible
+            let userDoc = snap.docs[0];
+            if (snap.size > 1) {
+                try {
+                    userDoc = snap.docs.reduce((best, d) => {
+                        const a = best.data().CreatedAt || '';
+                        const b = d.data().CreatedAt || '';
+                        return (b > a) ? d : best;
+                    }, snap.docs[0]);
+                } catch (e) {
+                    // fallback to first doc
+                    userDoc = snap.docs[0];
+                }
+            }
+            const userData = userDoc.data();
+            const cluster = userData.Cluster;
+            console.log('User cluster:', cluster);
+            if (cluster === undefined || cluster === null) {
+                console.warn('No cluster assigned to user profile');
+                return;
+            }
+
+            // 2) Fetch cluster document for user's cluster
+            const centroidsRef = collection(db, 'clusters');
+            const centQ = query(centroidsRef, where('Cluster', '==', cluster), limit(1));
+            const centSnap = await getDocs(centQ);
+            if (centSnap.empty) {
+                console.warn('No centroid found for cluster', cluster);
+                return;
+            }
+            const centroid = centSnap.docs[0].data();
+            const rawAmenities = centroid.amenities || centroid.Amenities || centroid.amenity;
+            const amenities = parseAmenities(rawAmenities);
+            if (!amenities || amenities.length === 0) {
+                console.warn('No amenities listed on centroid', centroid);
+                return;
+            }
+
+            // 3) Weighted sample an amenity
+            const picked = weightedPick(amenities);
+            const amenityChoice = picked.amenity;
+            console.log('Picked amenity:', amenityChoice, 'from', amenities);
+
+            // 4) Query POIs collection for that amenity
+            const poisRef = collection(db, 'pois');
+            const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
+            const poisSnap = await getDocs(poisQ);
+            if (poisSnap.empty) {
+                console.warn('No POIs found for amenity', amenityChoice);
+                return;
+            }
+
+            const docs = poisSnap.docs;
+            const chosenDoc = docs[Math.floor(Math.random() * docs.length)];
+            const poi = chosenDoc.data();
+            console.log('Selected POI:', poi);
+
+            // 5) Update UI
+            const nameEl = document.querySelector('.poi-name');
+            const distEl = document.querySelector('.poi-distance');
+            const btn = document.querySelector('.button');
+            if (nameEl) nameEl.textContent = poi.name || poi.title || 'Recommended Place';
+            const address = poi.address || poi.formatted_address || poi.addr || '';
+            if (distEl) distEl.textContent = address || '';
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address || (poi.name || ''));
+                    window.open(mapsUrl, '_blank');
+                });
+            }
+
+        } catch (err) {
+            console.error('Error loading POI recommendation:', err.message || err);
+        }
+    });
 </script>
 
 </body>

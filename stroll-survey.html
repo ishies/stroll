@@ -405,6 +405,31 @@
                     <label class="form-label" for="interests">Interests</label>
                     <input type="text" id="interests" class="form-input" placeholder="e.g., hiking, photography, parks" required>
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="weekly-income">Weekly Income (USD)</label>
+                    <input type="number" id="weekly-income" class="form-input" placeholder="Enter your weekly income" min="0" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="price-range">Preferred Price Range</label>
+                    <select id="price-range" class="form-select" required>
+                        <option value="">Select preferred price range</option>
+                        <option value="$">$ (Budget-friendly)</option>
+                        <option value="$$">$$ (Moderate)</option>
+                        <option value="$$$">$$$ (Upscale)</option>
+                        <option value="$$$$">$$$$ (Luxury)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="ambiance">Preferred Ambiance</label>
+                    <select id="ambiance" class="form-select" required>
+                        <option value="">Select preferred ambiance</option>
+                        <option value="quiet">Quiet</option>
+                        <option value="lively">Lively</option>
+                    </select>
+                </div>
                 
                 <button type="submit" class="button submit-btn">Submit Survey</button>
             </form>
@@ -485,6 +510,148 @@ const firebaseConfig = {
   const auth = getAuth(app);
 
   console.log("Firebase Connected!");
+
+  // Store centroids globally for cluster assignment
+  let centroids = [];
+
+  // Fetch and log clusters collection when survey page loads
+  async function logCentroids() {
+    try {
+      const centroidsRef = collection(db, 'clusters');
+      const centroidsSnapshot = await getDocs(centroidsRef);
+      console.log(`📍 Fetched ${centroidsSnapshot.size} clusters from Firestore:`);
+      centroidsSnapshot.forEach((doc) => {
+        console.log(`   - ${doc.id}:`, doc.data());
+        centroids.push({ id: doc.id, ...doc.data() });
+      });
+      if (centroidsSnapshot.size === 0) {
+        console.error('⚠️ WARNING: No clusters found in Firestore! Cluster assignment will fail.');
+      }
+    } catch (err) {
+      console.error('❌ Could not fetch clusters:', err.message, err);
+    }
+  }
+
+  // Store the promise so we can await it before cluster assignment
+  const centroidsReady = logCentroids();
+
+  // Transform survey responses
+  function transformSurveyData(formData) {
+    const transformed = {};
+
+    // Age (as-is)
+    transformed.Age = parseInt(formData.age, 10);
+
+    // Gender transformation
+    const genderMap = { male: 0, female: 1, 'prefer-not-to-say': 0.5 };
+    transformed.Gender = genderMap[formData.gender] || 0.5;
+
+    // Price Range transformation
+    const priceMap = { '$': 0, '$$': 1, '$$$': 2, '$$$$': 3 };
+    transformed['Price Range'] = priceMap[formData['price-range']] || 0;
+
+    // Weekly Income normalization (0-375 -> 0-1)
+    const rawIncome = parseFloat(formData['weekly-income']) || 0;
+    transformed['Weekly Income'] = Math.min(rawIncome / 375, 1);
+
+    // Ambiance transformation
+    const ambianceMap = { quiet: 0, lively: 1 };
+    transformed.Ambiance = ambianceMap[formData.ambiance] || 0;
+
+    return transformed;
+  }
+
+  // Calculate Euclidean distance
+  function euclideanDistance(point1, point2, features) {
+    let sum = 0;
+    for (const feature of features) {
+      const diff = (point1[feature] || 0) - (point2[feature] || 0);
+      sum += diff * diff;
+    }
+    return Math.sqrt(sum);
+  }
+
+  // Assign user to nearest cluster
+  function assignCluster(userData) {
+    console.log('assignCluster called with userData:', userData);
+    console.log('Number of centroids available:', centroids.length);
+    
+    if (centroids.length === 0) {
+      console.error('❌ No centroids available for cluster assignment. Defaulting to cluster 0.');
+      return 0; // Default fallback cluster
+    }
+
+    const features = ['Age', 'Gender', 'Price Range', 'Weekly Income', 'Ambiance'];
+    let minDistance = Infinity;
+    let assignedCluster = null;
+
+    for (const centroid of centroids) {
+      const distance = euclideanDistance(userData, centroid, features);
+      console.log(`Distance to centroid ${centroid.id} (Cluster ${centroid.Cluster}):`, distance);
+      if (distance < minDistance) {
+        minDistance = distance;
+        assignedCluster = centroid.Cluster;
+      }
+    }
+
+    console.log(`✓ Assigned cluster: ${assignedCluster} (min distance: ${minDistance})`);
+    return assignedCluster;
+  }
+
+  // Handle form submission
+  const surveyForm = document.querySelector('form');
+  if (surveyForm) {
+    surveyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Collect form data
+      const formData = {
+        age: document.getElementById('age').value,
+        gender: document.getElementById('gender').value,
+        interests: document.getElementById('interests').value,
+        'weekly-income': document.getElementById('weekly-income').value,
+        'price-range': document.getElementById('price-range').value,
+        ambiance: document.getElementById('ambiance').value,
+      };
+
+      // Transform responses
+      const transformed = transformSurveyData(formData);
+      console.log('Transformed user data:', transformed);
+
+      // Ensure centroids are loaded before cluster assignment
+      await centroidsReady;
+
+      // Assign cluster
+      const assignedCluster = assignCluster(transformed);
+      console.log('Assigned to cluster:', assignedCluster);
+
+      // Create user profile
+      const userProfile = { 
+        ...transformed, 
+        Cluster: assignedCluster, 
+        Interests: formData.interests,
+        CreatedAt: new Date().toISOString()
+      };
+      console.log('User profile:', userProfile);
+
+            // Save to Firestore "users" collection (include auth uid/email when available)
+            try {
+                const usersRef = collection(db, 'users');
+                const profileToSave = {
+                    ...userProfile,
+                    uid: auth && auth.currentUser ? auth.currentUser.uid : null,
+                    email: auth && auth.currentUser ? auth.currentUser.email : null,
+                };
+                const docRef = await addDoc(usersRef, profileToSave);
+                console.log('User saved to Firestore with ID:', docRef.id);
+            } catch (err) {
+                console.error('Error saving user to Firestore:', err.message);
+            }
+
+      // Navigate to next page
+      window.location.href = 'stroll-nav.html';
+    });
+  }
 </script>
 
 </body>

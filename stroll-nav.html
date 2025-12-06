@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stroll App - Sign In</title>
+    <title>Stroll App - Enter Your Path</title>
     <style>
         * {
             margin: 0;
@@ -29,23 +29,6 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .back-arrow {
-            position: absolute;
-            top: 30px;
-            left: 25px;
-            width: 35px;
-            height: 35px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            z-index: 10;
         }
 
         .sky-buildings {
@@ -110,7 +93,7 @@
 
         .tree-container {
             position: absolute;
-            z-index: 7;
+            z-index: 4;
         }
 
         .tree {
@@ -120,41 +103,6 @@
 
         .tree-1 { top: 160px; left: 15px; }
         .tree-2 { top: 150px; right: 20px; }
-        .tree-3 { top: 200px; left: 60px; }
-        .tree-4 { top: 190px; right: 70px; }
-
-        .path-svg {
-            position: absolute;
-            top: 180px;
-            left: 0;
-            width: 100%;
-            height: 250px;
-            z-index: 5;
-        }
-
-        .person {
-            position: absolute;
-            font-size: 24px;
-            z-index: 6;
-            animation: walk 2s ease-in-out infinite;
-        }
-
-        @keyframes walk {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-3px); }
-        }
-
-        .person-1 { top: 220px; left: 50px; animation-delay: 0s; }
-        .person-2 { top: 235px; left: 130px; animation-delay: 0.5s; }
-        .person-3 { top: 230px; right: 80px; animation-delay: 1s; }
-
-        .bike {
-            position: absolute;
-            font-size: 28px;
-            z-index: 6;
-        }
-
-        .bike-1 { top: 255px; left: 90px; }
 
         .cloud {
             position: absolute;
@@ -165,115 +113,6 @@
 
         .cloud-1 { top: 80px; left: 40px; }
         .cloud-2 { top: 100px; right: 60px; }
-
-        .content {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            margin-top: 220px;
-        }
-
-        h1 {
-            color: white;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.18);
-        }
-
-        .subtitle {
-            color: rgba(255,255,255,0.9);
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .form-group {
-            margin-bottom: 10px;
-            text-align: left;
-        }
-
-        .form-label {
-            display: block;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 12px;
-            font-size: 14px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            font-family: 'Clarendon', 'Georgia', serif;
-            transition: border-color 0.3s, background 0.3s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: rgba(255,255,255,0.8);
-            background: white;
-        }
-
-        .form-input::placeholder {
-            color: #999;
-        }
-
-        .forgot-password {
-            text-align: right;
-            margin-top: 8px;
-            margin-bottom: 25px;
-        }
-
-        .forgot-password a {
-            color: white;
-            font-size: 13px;
-            text-decoration: none;
-            opacity: 0.9;
-        }
-
-        .button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 15px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-family: 'Clarendon', 'Georgia', serif;
-        }
-
-        .button:active {
-            transform: scale(0.98);
-        }
-
-        .signin-btn {
-            background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(139,90,60,0.4);
-        }
-
-        .signin-btn:hover {
-            box-shadow: 0 6px 20px rgba(139,90,60,0.5);
-        }
-
-        .signup-link {
-            text-align: center;
-            margin-top: 15px;
-            color: white;
-            font-size: 14px;
-        }
-
-        .signup-link a {
-            color: white;
-            font-weight: 700;
-            text-decoration: none;
-            border-bottom: 2px solid white;
-        }
 
         .city-buildings {
             position: absolute;
@@ -306,9 +145,178 @@
             height: 5px;
             background: rgba(255, 215, 0, 0.5);
         }
+
+        .back-arrow {
+            position: absolute;
+            top: 30px;
+            left: 25px;
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+        }
+
+        h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+            margin-bottom: 35px;
+            text-align: center;
+        }
+
+        .form-group {
+            width: 100%;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            font-size: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-family: 'Clarendon', 'Georgia', serif;
+            transition: border-color 0.3s, background 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.8);
+            background: white;
+        }
+
+        .form-input::placeholder {
+            color: #999;
+        }
+
+        .location-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #666;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            list-style: none;
+        }
+
+        .autocomplete-list.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 12px 16px;
+            color: #333;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .autocomplete-item:hover {
+            background: #f0f0f0;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Clarendon', 'Georgia', serif;
+            background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139,90,60,0.4);
+            margin-top: 30px;
+        }
+
+        .button:hover {
+            box-shadow: 0 6px 20px rgba(139,90,60,0.5);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .path-line {
+            display: none;
+        }
+
+        .path-dot {
+            display: none;
+        }
+
+        .dot-start {
+            display: none;
+        }
+
+        .dot-end {
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Google Places API Script -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB59Zzd-0AvQP3xdJPGCr0InnRUAAf9Tew&libraries=places"></script>
     <div class="phone-container">
         <div class="back-arrow">‹</div>
         
@@ -341,65 +349,37 @@
         <div class="tree-container tree-2">
             <div class="tree">🌳</div>
         </div>
-        <div class="tree-container tree-3">
-            <div class="tree">🌲</div>
-        </div>
-        <div class="tree-container tree-4">
-            <div class="tree">🌲</div>
-        </div>
-
-        <!-- Walking paths -->
-        <svg class="path-svg" viewBox="0 0 270 250" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 10 60 C 40 50, 70 45, 100 50 S 150 60, 180 55 S 220 45, 260 50" 
-                  stroke="rgba(255,255,255,0.5)" 
-                  stroke-width="6" 
-                  fill="none" 
-                  stroke-linecap="round"/>
-            
-            <path d="M 5 100 C 50 90, 90 110, 130 105 S 180 95, 220 105 S 250 115, 270 110" 
-                  stroke="rgba(255,255,255,0.45)" 
-                  stroke-width="6" 
-                  fill="none" 
-                  stroke-linecap="round"/>
-            
-            <path d="M 20 140 C 60 135, 100 145, 140 140 S 190 130, 230 135" 
-                  stroke="rgba(255,255,255,0.4)" 
-                  stroke-width="5" 
-                  fill="none" 
-                  stroke-linecap="round"/>
-        </svg>
-
-        <!-- People and bikes -->
-        <div class="person person-1">🚶‍♀️</div>
-        <div class="person person-2">🚶</div>
-        <div class="person person-3">🚶‍♂️</div>
-        <div class="bike bike-1">🚴</div>
-
-        <!-- Content -->
+        
         <div class="content">
-            <h1>Sign In</h1>
-            <p class="subtitle">Welcome back to Stroll</p>
+            <h1>Enter Your Path</h1>
+            <p class="subtitle">Plan your stroll</p>
             
-            <div id="signin-error" style="display:none;color:#ffe5e5;background:rgba(0,0,0,0.15);padding:8px;border-radius:8px;margin-bottom:12px;font-size:13px;"></div>
-            <form id="signin-form" novalidate>
+            <form style="width: 100%;">
                 <div class="form-group">
-                    <label class="form-label" for="email">Email</label>
-                    <input type="email" id="email" class="form-input" placeholder="your@email.com" required>
+                    <label class="form-label" for="starting-point">Starting Point</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="starting-point" class="form-input" placeholder="Enter starting location" required>
+                        <span class="location-icon">📍</span>
+                        <ul id="starting-suggestions" class="autocomplete-list"></ul>
+                    </div>
+                </div>
+
+                <div class="path-line">
+                    <div class="path-dot dot-start"></div>
+                    <div class="path-dot dot-end"></div>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                    <label class="form-label" for="destination">Destination</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="destination" class="form-input" placeholder="Enter destination" required>
+                        <span class="location-icon">🎯</span>
+                        <ul id="destination-suggestions" class="autocomplete-list"></ul>
+                    </div>
                 </div>
                 
-                <!-- removed forgot-password link to simplify layout -->
-                
-                <button type="submit" class="button signin-btn">Sign In</button>
+                <button type="submit" class="button">Submit</button>
             </form>
-            
-            <div class="signup-link">
-                Don't have an account? <a href="stroll-signup.html">Sign Up</a>
-            </div>
         </div>
 
         <!-- Foreground buildings -->
@@ -454,60 +434,98 @@
             </div>
         </div>
     </div>
-        <script type="module">
-  // Import the Firebase services you use
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  // Your Firebase config
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
-  authDomain: "stroll-c5285.firebaseapp.com",
-  projectId: "stroll-c5285",
-  storageBucket: "stroll-c5285.firebasestorage.app",
-  messagingSenderId: "465458957302",
-  appId: "1:465458957302:web:1b104b86069514164615d7",
-  measurementId: "G-PZY4GX7SSE"
-};
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
+    <script>
+        // Google Places Autocomplete
+        let startingAutocomplete;
+        let destinationAutocomplete;
 
-  console.log("Firebase Connected!");
+        function initializeGooglePlaces() {
+            const startingInput = document.getElementById('starting-point');
+            const destinationInput = document.getElementById('destination');
+            const startingSuggestions = document.getElementById('starting-suggestions');
+            const destinationSuggestions = document.getElementById('destination-suggestions');
 
-    // Sign-in form handling using Firebase Auth
-    const signinForm = document.getElementById('signin-form');
-    const signinError = document.getElementById('signin-error');
+            // Restrict results to specific bounds (NYC area) - optional
+            const nycBounds = {
+                north: 40.9176,
+                south: 40.5795,
+                east: -73.7034,
+                west: -74.2591
+            };
 
-    if (signinForm) {
-        signinForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            signinError.style.display = 'none';
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+            // Create autocomplete service
+            const service = new google.maps.places.AutocompleteService();
 
-            try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                console.log('Signed in:', userCredential.user);
-                // Redirect to the nav page after successful sign-in
-                window.location.href = 'stroll-nav.html';
-            } catch (err) {
-                console.error('Sign-in error', err);
-                let msg = 'Sign-in failed. Please check your email and password.';
-                if (err && err.code) {
-                    if (err.code === 'auth/user-not-found') msg = 'No account found for that email.';
-                    else if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
-                    else if (err.code === 'auth/invalid-email') msg = 'Invalid email address.';
-                }
-                signinError.textContent = msg;
-                signinError.style.display = 'block';
+            function handleInput(input, suggestionsList) {
+                input.addEventListener('input', async (e) => {
+                    const query = e.target.value.trim();
+                    suggestionsList.innerHTML = '';
+
+                    if (query.length < 2) {
+                        suggestionsList.classList.remove('active');
+                        return;
+                    }
+
+                    try {
+                        const predictions = await service.getPlacePredictions({
+                            input: query,
+                            bounds: nycBounds,
+                            componentRestrictions: { country: 'us' }
+                        });
+
+                        if (predictions.predictions.length === 0) {
+                            suggestionsList.classList.remove('active');
+                            return;
+                        }
+
+                        predictions.predictions.forEach(prediction => {
+                            const li = document.createElement('li');
+                            li.className = 'autocomplete-item';
+                            li.textContent = prediction.description;
+                            li.addEventListener('click', () => {
+                                input.value = prediction.description;
+                                suggestionsList.classList.remove('active');
+                                suggestionsList.innerHTML = '';
+                            });
+                            suggestionsList.appendChild(li);
+                        });
+
+                        suggestionsList.classList.add('active');
+                    } catch (err) {
+                        console.error('Places API error:', err);
+                    }
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (e.target !== input && !suggestionsList.contains(e.target)) {
+                        suggestionsList.classList.remove('active');
+                    }
+                });
             }
-        });
-    }
-</script>
 
+            handleInput(startingInput, startingSuggestions);
+            handleInput(destinationInput, destinationSuggestions);
+
+            // Handle form submission
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const starting = startingInput.value.trim();
+                    const destination = destinationInput.value.trim();
+                    
+                    if (starting && destination) {
+                        console.log('Route:', { starting, destination });
+                        window.location.href = 'stroll-poi.html';
+                    }
+                });
+            }
+        }
+
+        // Initialize when Google Maps API is loaded
+        window.addEventListener('load', initializeGooglePlaces);
+    </script>
 </body>
 </html>
