@@ -271,128 +271,409 @@
     </div>
 
     <script>
+        // Firebase configuration - REPLACE WITH YOUR NEW CREDENTIALS
+        const firebaseConfig = {
+            apiKey: "YOUR_NEW_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Set to true to use Firebase, false for mock data
+        const USE_FIREBASE = false;
+
         // Mock POI data for demonstration
         const mockPOIs = [
             {
                 name: "Blue Bottle Coffee",
                 address: "450 W 15th St, New York, NY 10011",
-                type: "coffee_shop"
+                type: "coffee_shop",
+                amenity: "cafe"
             },
             {
                 name: "Stumptown Coffee Roasters",
                 address: "30 W 8th St, New York, NY 10011",
-                type: "coffee_shop"
+                type: "coffee_shop",
+                amenity: "cafe"
             },
             {
                 name: "The High Line",
                 address: "New York, NY 10011",
-                type: "park"
+                type: "park",
+                amenity: "park"
             },
             {
                 name: "Chelsea Market",
                 address: "75 9th Ave, New York, NY 10011",
-                type: "market"
+                type: "market",
+                amenity: "marketplace"
             },
             {
                 name: "Joe's Pizza",
                 address: "7 Carmine St, New York, NY 10014",
-                type: "restaurant"
+                type: "restaurant",
+                amenity: "restaurant"
             },
             {
                 name: "Washington Square Park",
                 address: "Washington Square, New York, NY 10012",
-                type: "park"
+                type: "park",
+                amenity: "park"
             },
             {
                 name: "Strand Bookstore",
                 address: "828 Broadway, New York, NY 10003",
-                type: "bookstore"
+                type: "bookstore",
+                amenity: "bookstore"
             }
         ];
 
         let currentPOI = null;
         let likedPOIs = [];
         let isLiked = false;
+        let userPreferences = {};
+        let db = null;
+        let auth = null;
 
-        // Simulate loading a personalized POI
-        function loadPOI() {
-            // Filter out already liked POIs occasionally to show variety
-            let availablePOIs = mockPOIs;
+        // Parse amenities from cluster data
+        function parseAmenities(raw) {
+            if (!raw) return [];
             
-            // If user has liked POIs, give 60% chance to show similar type
-            if (likedPOIs.length > 0 && Math.random() > 0.4) {
-                const likedTypes = likedPOIs.map(poi => poi.type);
-                const similarPOIs = mockPOIs.filter(poi => likedTypes.includes(poi.type));
-                if (similarPOIs.length > 0) {
-                    availablePOIs = similarPOIs;
+            if (typeof raw === 'string') {
+                const tupleRegex = /\(\s*([^,]+?)\s*,\s*(\d+)\s*\)/g;
+                const matches = [];
+                let match;
+                while ((match = tupleRegex.exec(raw)) !== null) {
+                    matches.push({
+                        amenity: match[1].trim(),
+                        frequency: Number(match[2]) || 1
+                    });
                 }
+                if (matches.length > 0) return matches;
             }
             
-            // Select random POI
-            currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
+            if (Array.isArray(raw)) {
+                return raw.map(item => {
+                    if (Array.isArray(item)) {
+                        return { amenity: item[0], frequency: Number(item[1]) || 0 };
+                    }
+                    if (typeof item === 'object') {
+                        const amen = item.amenity || item.name || item[0];
+                        const freq = item.frequency || item.freq || item.count || 1;
+                        return { amenity: amen, frequency: Number(freq) || 0 };
+                    }
+                    return { amenity: String(item), frequency: 1 };
+                });
+            }
             
-            // Update UI
-            document.querySelector('.poi-name').textContent = currentPOI.name;
-            document.querySelector('.poi-distance').textContent = currentPOI.address;
+            return [{ amenity: String(raw), frequency: 1 }];
+        }
+
+        // Weighted selection
+        function weightedPick(items) {
+            const total = items.reduce((s, it) => s + (Number(it.frequency) || 0), 0);
+            if (total <= 0) {
+                return items[Math.floor(Math.random() * items.length)];
+            }
+            let r = Math.random() * total;
+            for (const it of items) {
+                r -= (Number(it.frequency) || 0);
+                if (r <= 0) return it;
+            }
+            return items[items.length - 1];
+        }
+
+        // Load POI with Firebase
+        async function loadPOIWithFirebase() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    console.warn('No authenticated user');
+                    loadPOIMock();
+                    return;
+                }
+
+                // Import Firebase modules dynamically
+                const { getFirestore, collection, getDocs, query, where, limit } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                db = getFirestore();
+
+                // Get user profile
+                const usersRef = collection(db, 'users');
+                let q = query(usersRef, where('uid', '==', user.uid));
+                let snap = await getDocs(q);
+                
+                if (snap.empty && user.email) {
+                    q = query(usersRef, where('email', '==', user.email));
+                    snap = await getDocs(q);
+                }
+
+                if (snap.empty) {
+                    console.warn('No user profile found');
+                    loadPOIMock();
+                    return;
+                }
+
+                // Get most recent profile
+                let userDoc = snap.docs[0];
+                if (snap.size > 1) {
+                    userDoc = snap.docs.reduce((best, d) => {
+                        const a = best.data().CreatedAt || '';
+                        const b = d.data().CreatedAt || '';
+                        return (b > a) ? d : best;
+                    }, snap.docs[0]);
+                }
+
+                const userData = userDoc.data();
+                const cluster = userData.Cluster;
+                userPreferences = userData.preferences || {};
+
+                console.log('User cluster:', cluster);
+                console.log('User preferences:', userPreferences);
+
+                // Get cluster centroid
+                const centroidsRef = collection(db, 'clusters');
+                const centQ = query(centroidsRef, where('Cluster', '==', cluster), limit(1));
+                const centSnap = await getDocs(centQ);
+
+                if (centSnap.empty) {
+                    console.warn('No centroid found');
+                    loadPOIMock();
+                    return;
+                }
+
+                const centroid = centSnap.docs[0].data();
+                const rawAmenities = centroid.amenities || centroid.Amenities;
+                const amenities = parseAmenities(rawAmenities);
+
+                if (!amenities || amenities.length === 0) {
+                    console.warn('No amenities in centroid');
+                    loadPOIMock();
+                    return;
+                }
+
+                // EXPLORATION: 15% chance to try a random amenity from cluster
+                const EXPLORATION_RATE = 0.15;
+                let amenityChoice;
+                
+                if (Math.random() < EXPLORATION_RATE) {
+                    // Explore: pick random amenity from cluster (unweighted)
+                    const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
+                    amenityChoice = randomAmenity.amenity;
+                    console.log('🔍 EXPLORING new amenity:', amenityChoice);
+                } else {
+                    // Exploit: weight amenities by user preferences
+                    const weightedAmenities = amenities.map(a => ({
+                        ...a,
+                        frequency: a.frequency + (userPreferences[a.amenity] || 0) * 2
+                    }));
+                    const picked = weightedPick(weightedAmenities);
+                    amenityChoice = picked.amenity;
+                    console.log('✅ Using preferred amenity:', amenityChoice);
+                }
+
+                // Query POIs
+                const poisRef = collection(db, 'pois');
+                const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
+                const poisSnap = await getDocs(poisQ);
+
+                if (poisSnap.empty) {
+                    console.warn('No POIs found for', amenityChoice);
+                    loadPOIMock();
+                    return;
+                }
+
+                const docs = poisSnap.docs;
+                const chosenDoc = docs[Math.floor(Math.random() * docs.length)];
+                currentPOI = chosenDoc.data();
+
+                updateUI();
+
+            } catch (err) {
+                console.error('Firebase error:', err);
+                loadPOIMock();
+            }
+        }
+
+        // Load POI with mock data
+        function loadPOIMock() {
+            let availablePOIs = mockPOIs;
             
-            // Reset heart state
+            // EXPLORATION: 15% chance to show random POI regardless of preferences
+            const EXPLORATION_RATE = 0.15;
+            
+            if (Math.random() < EXPLORATION_RATE) {
+                // Explore: show any random POI
+                currentPOI = mockPOIs[Math.floor(Math.random() * mockPOIs.length)];
+                console.log('🔍 EXPLORING new type:', currentPOI.type);
+            } else {
+                // Exploit: if user has preferences, weight by them
+                if (Object.keys(userPreferences).length > 0) {
+                    const preferredTypes = Object.keys(userPreferences)
+                        .filter(k => userPreferences[k] > 0)
+                        .sort((a, b) => userPreferences[b] - userPreferences[a]);
+                    
+                    if (preferredTypes.length > 0) {
+                        const topType = preferredTypes[0];
+                        const similarPOIs = mockPOIs.filter(poi => 
+                            poi.type === topType || poi.amenity === topType
+                        );
+                        if (similarPOIs.length > 0) {
+                            availablePOIs = similarPOIs;
+                        }
+                    }
+                }
+                
+                currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
+                console.log('✅ Using preferred type:', currentPOI.type);
+            }
+            
+            updateUI();
+        }
+
+        // Update UI with current POI
+        function updateUI() {
+            document.querySelector('.poi-name').textContent = currentPOI.name || 'Recommended Place';
+            document.querySelector('.poi-distance').textContent = currentPOI.address || '';
+            
             isLiked = false;
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = '♡';
             heartBtn.classList.remove('liked');
         }
 
-        // Handle heart button click
-        function handleLike() {
-            const heartBtn = document.getElementById('heartBtn');
+        // Handle like with Firebase
+        async function handleLikeWithFirebase() {
+            if (!currentPOI) return;
+
+            const amenityType = currentPOI.amenity || currentPOI.type;
             
             if (!isLiked) {
-                // Like the POI
                 isLiked = true;
-                heartBtn.textContent = '♥';
-                heartBtn.classList.add('liked');
+                userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
                 
-                // Add to liked POIs if not already there
-                if (!likedPOIs.find(poi => poi.name === currentPOI.name)) {
-                    likedPOIs.push(currentPOI);
-                    console.log('Liked POIs:', likedPOIs.map(p => p.name));
+                // Save to Firebase
+                try {
+                    const user = auth.currentUser;
+                    if (user) {
+                        const { getFirestore, collection, query, where, getDocs, updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                        db = getFirestore();
+                        
+                        const usersRef = collection(db, 'users');
+                        const q = query(usersRef, where('uid', '==', user.uid));
+                        const snap = await getDocs(q);
+                        
+                        if (!snap.empty) {
+                            const userDocRef = doc(db, 'users', snap.docs[0].id);
+                            await updateDoc(userDocRef, {
+                                preferences: userPreferences
+                            });
+                            console.log('Preferences updated in Firebase');
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error updating preferences:', err);
                 }
             } else {
-                // Unlike the POI
                 isLiked = false;
-                heartBtn.textContent = '♡';
-                heartBtn.classList.remove('liked');
-                
-                // Remove from liked POIs
-                likedPOIs = likedPOIs.filter(poi => poi.name !== currentPOI.name);
-                console.log('Liked POIs:', likedPOIs.map(p => p.name));
+                if (userPreferences[amenityType] > 0) {
+                    userPreferences[amenityType]--;
+                }
             }
+
+            const heartBtn = document.getElementById('heartBtn');
+            heartBtn.textContent = isLiked ? '♥' : '♡';
+            heartBtn.classList.toggle('liked', isLiked);
+            
+            console.log('User preferences:', userPreferences);
         }
 
-        // Handle refresh button click
+        // Handle like (mock version)
+        function handleLike() {
+            if (USE_FIREBASE) {
+                handleLikeWithFirebase();
+                return;
+            }
+
+            if (!currentPOI) return;
+            const amenityType = currentPOI.amenity || currentPOI.type;
+            
+            if (!isLiked) {
+                isLiked = true;
+                likedPOIs.push(currentPOI);
+                userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
+            } else {
+                isLiked = false;
+                likedPOIs = likedPOIs.filter(poi => poi.name !== currentPOI.name);
+                if (userPreferences[amenityType] > 0) {
+                    userPreferences[amenityType]--;
+                }
+            }
+            
+            const heartBtn = document.getElementById('heartBtn');
+            heartBtn.textContent = isLiked ? '♥' : '♡';
+            heartBtn.classList.toggle('liked', isLiked);
+            
+            console.log('User preferences:', userPreferences);
+        }
+
+        // Handle refresh button
         function handleRefresh() {
             const refreshBtn = document.getElementById('refreshBtn');
             refreshBtn.classList.add('spinning');
             
-            // Remove spinning class after animation
             setTimeout(() => {
                 refreshBtn.classList.remove('spinning');
             }, 600);
             
-            // Load new POI
-            loadPOI();
+            if (USE_FIREBASE) {
+                loadPOIWithFirebase();
+            } else {
+                loadPOIMock();
+            }
+        }
+
+        // Initialize Firebase if enabled
+        async function initFirebase() {
+            if (!USE_FIREBASE) {
+                loadPOIMock();
+                return;
+            }
+
+            try {
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+                const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+                
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        console.log('User authenticated:', user.email);
+                        loadPOIWithFirebase();
+                    } else {
+                        console.warn('No authenticated user, using mock data');
+                        loadPOIMock();
+                    }
+                });
+            } catch (err) {
+                console.error('Firebase initialization error:', err);
+                loadPOIMock();
+            }
         }
 
         // Setup event listeners
         window.addEventListener('load', () => {
-            loadPOI();
+            initFirebase();
             
             document.getElementById('heartBtn').addEventListener('click', handleLike);
             document.getElementById('refreshBtn').addEventListener('click', handleRefresh);
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentPOI.address)}`;
+                    const address = currentPOI.address || currentPOI.name || '';
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
                     window.open(mapsUrl, '_blank');
                 }
             });
