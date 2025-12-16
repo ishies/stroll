@@ -46,10 +46,6 @@
             border-radius: 10px;
         }
 
-        .phone-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.5);
-        }
-
         .back-arrow {
             position: absolute;
             top: 30px;
@@ -238,10 +234,6 @@
             background: white;
         }
 
-        .form-input::placeholder {
-            color: #999;
-        }
-
         .form-select {
             cursor: pointer;
             appearance: none;
@@ -262,20 +254,17 @@
             transition: transform 0.2s, box-shadow 0.2s;
             font-family: 'Clarendon', 'Georgia', serif;
             margin-top: 10px;
-        }
-
-        .button:active {
-            transform: scale(0.98);
-        }
-
-        .submit-btn {
             background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%);
             color: white;
             box-shadow: 0 4px 15px rgba(139,90,60,0.4);
         }
 
-        .submit-btn:hover {
+        .button:hover {
             box-shadow: 0 6px 20px rgba(139,90,60,0.5);
+        }
+
+        .button:active {
+            transform: scale(0.98);
         }
 
         .city-buildings {
@@ -315,7 +304,6 @@
     <div class="phone-container">
         <div class="back-arrow" onclick="window.history.back()">‹</div>
         
-        <!-- Sky and background buildings -->
         <div class="sky-buildings">
             <div class="building-skyline">
                 <div class="skyscraper sky-1"></div>
@@ -334,10 +322,8 @@
         <div class="cloud cloud-1">☁️</div>
         <div class="cloud cloud-2">☁️</div>
 
-        <!-- Park ground -->
         <div class="park-ground"></div>
 
-        <!-- Trees -->
         <div class="tree-container tree-1">
             <div class="tree">🌳</div>
         </div>
@@ -351,20 +337,17 @@
             <div class="tree">🌲</div>
         </div>
 
-        <!-- Walking paths -->
         <svg class="path-svg" viewBox="0 0 270 250" xmlns="http://www.w3.org/2000/svg">
             <path d="M 10 60 C 40 50, 70 45, 100 50 S 150 60, 180 55 S 220 45, 260 50" 
                   stroke="rgba(255,255,255,0.5)" 
                   stroke-width="6" 
                   fill="none" 
                   stroke-linecap="round"/>
-            
             <path d="M 5 100 C 50 90, 90 110, 130 105 S 180 95, 220 105 S 250 115, 270 110" 
                   stroke="rgba(255,255,255,0.45)" 
                   stroke-width="6" 
                   fill="none" 
                   stroke-linecap="round"/>
-            
             <path d="M 20 140 C 60 135, 100 145, 140 140 S 190 130, 230 135" 
                   stroke="rgba(255,255,255,0.4)" 
                   stroke-width="5" 
@@ -372,18 +355,16 @@
                   stroke-linecap="round"/>
         </svg>
 
-        <!-- People and bikes -->
         <div class="person person-1">🚶‍♀️</div>
         <div class="person person-2">🚶</div>
         <div class="person person-3">🚶‍♂️</div>
         <div class="bike bike-1">🚴</div>
 
-        <!-- Content -->
         <div class="content">
             <h1>User Survey</h1>
             <p class="subtitle">Help us personalize your experience</p>
             
-            <form>
+            <form id="surveyForm">
                 <div class="form-group">
                     <label class="form-label" for="age">Age</label>
                     <input type="number" id="age" class="form-input" placeholder="Enter your age" min="1" max="120" required>
@@ -395,28 +376,23 @@
                         <option value="">Select your gender</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
-                        <option value="prefer-not-to-say">Other/Prefer not to say</option>
+                        <option value="other">Other/Prefer not to say</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
-                    <label class="form-label" for="interests">Interests</label>
-                    <input type="text" id="interests" class="form-input" placeholder="e.g., hiking, photography, parks" required>
+                    <label class="form-label" for="income">Weekly Income (USD)</label>
+                    <input type="number" id="income" class="form-input" placeholder="Enter your weekly income" min="0" step="0.01" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="weekly-income">Weekly Income (USD)</label>
-                    <input type="number" id="weekly-income" class="form-input" placeholder="Enter your weekly income" min="0" step="0.01" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="price-range">Preferred Price Range</label>
-                    <select id="price-range" class="form-select" required>
+                    <label class="form-label" for="price">Preferred Price Range</label>
+                    <select id="price" class="form-select" required>
                         <option value="">Select preferred price range</option>
-                        <option value="$">$ (Budget-friendly)</option>
-                        <option value="$$">$$ (Moderate)</option>
-                        <option value="$$$">$$$ (Upscale)</option>
-                        <option value="$$$$">$$$$ (Luxury)</option>
+                        <option value="0">$ (Budget-friendly)</option>
+                        <option value="1">$$ (Moderate)</option>
+                        <option value="2">$$$ (Upscale)</option>
+                        <option value="3">$$$$ (Luxury)</option>
                     </select>
                 </div>
 
@@ -424,16 +400,15 @@
                     <label class="form-label" for="ambiance">Preferred Ambiance</label>
                     <select id="ambiance" class="form-select" required>
                         <option value="">Select preferred ambiance</option>
-                        <option value="quiet">Quiet</option>
-                        <option value="lively">Lively</option>
+                        <option value="0">Quiet</option>
+                        <option value="1">Lively</option>
                     </select>
                 </div>
                 
-                <button type="submit" class="button submit-btn">Submit Survey</button>
+                <button type="submit" class="button">Submit Survey</button>
             </form>
         </div>
 
-        <!-- Foreground buildings -->
         <div class="city-buildings">
             <div style="display: flex; align-items: flex-end;">
                 <div class="building building-left-1">
@@ -485,172 +460,63 @@
             </div>
         </div>
     </div>
-        <script type="module">
-  // Import the Firebase services you use
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  // Your Firebase config
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
-  authDomain: "stroll-c5285.firebaseapp.com",
-  projectId: "stroll-c5285",
-  storageBucket: "stroll-c5285.firebasestorage.app",
-  messagingSenderId: "465458957302",
-  appId: "1:465458957302:web:1b104b86069514164615d7",
-  measurementId: "G-PZY4GX7SSE"
-};
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
+    <script>
+        const mockCentroids = [
+            {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
+            {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
+            {Cluster: 2, Age: 22, Gender: 0.6, PriceRange: 0, Income: 0.2, Ambiance: 1}
+        ];
 
-  console.log("Firebase Connected!");
-
-  // Store centroids globally for cluster assignment
-  let centroids = [];
-
-  // Fetch and log clusters collection when survey page loads
-  async function logCentroids() {
-    try {
-      const centroidsRef = collection(db, 'clusters');
-      const centroidsSnapshot = await getDocs(centroidsRef);
-      console.log(`📍 Fetched ${centroidsSnapshot.size} clusters from Firestore:`);
-      centroidsSnapshot.forEach((doc) => {
-        console.log(`   - ${doc.id}:`, doc.data());
-        centroids.push({ id: doc.id, ...doc.data() });
-      });
-      if (centroidsSnapshot.size === 0) {
-        console.error('⚠️ WARNING: No clusters found in Firestore! Cluster assignment will fail.');
-      }
-    } catch (err) {
-      console.error('❌ Could not fetch clusters:', err.message, err);
-    }
-  }
-
-  // Store the promise so we can await it before cluster assignment
-  const centroidsReady = logCentroids();
-
-  // Transform survey responses
-  function transformSurveyData(formData) {
-    const transformed = {};
-
-    // Age (as-is)
-    transformed.Age = parseInt(formData.age, 10);
-
-    // Gender transformation
-    const genderMap = { male: 0, female: 1, 'prefer-not-to-say': 0.5 };
-    transformed.Gender = genderMap[formData.gender] || 0.5;
-
-    // Price Range transformation
-    const priceMap = { '$': 0, '$$': 1, '$$$': 2, '$$$$': 3 };
-    transformed['Price Range'] = priceMap[formData['price-range']] || 0;
-
-    // Weekly Income normalization (0-375 -> 0-1)
-    const rawIncome = parseFloat(formData['weekly-income']) || 0;
-    transformed['Weekly Income'] = Math.min(rawIncome / 375, 1);
-
-    // Ambiance transformation
-    const ambianceMap = { quiet: 0, lively: 1 };
-    transformed.Ambiance = ambianceMap[formData.ambiance] || 0;
-
-    return transformed;
-  }
-
-  // Calculate Euclidean distance
-  function euclideanDistance(point1, point2, features) {
-    let sum = 0;
-    for (const feature of features) {
-      const diff = (point1[feature] || 0) - (point2[feature] || 0);
-      sum += diff * diff;
-    }
-    return Math.sqrt(sum);
-  }
-
-  // Assign user to nearest cluster
-  function assignCluster(userData) {
-    console.log('assignCluster called with userData:', userData);
-    console.log('Number of centroids available:', centroids.length);
-    
-    if (centroids.length === 0) {
-      console.error('❌ No centroids available for cluster assignment. Defaulting to cluster 0.');
-      return 0; // Default fallback cluster
-    }
-
-    const features = ['Age', 'Gender', 'Price Range', 'Weekly Income', 'Ambiance'];
-    let minDistance = Infinity;
-    let assignedCluster = null;
-
-    for (const centroid of centroids) {
-      const distance = euclideanDistance(userData, centroid, features);
-      console.log(`Distance to centroid ${centroid.id} (Cluster ${centroid.Cluster}):`, distance);
-      if (distance < minDistance) {
-        minDistance = distance;
-        assignedCluster = centroid.Cluster;
-      }
-    }
-
-    console.log(`✓ Assigned cluster: ${assignedCluster} (min distance: ${minDistance})`);
-    return assignedCluster;
-  }
-
-  // Handle form submission
-  const surveyForm = document.querySelector('form');
-  if (surveyForm) {
-    surveyForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      // Collect form data
-      const formData = {
-        age: document.getElementById('age').value,
-        gender: document.getElementById('gender').value,
-        interests: document.getElementById('interests').value,
-        'weekly-income': document.getElementById('weekly-income').value,
-        'price-range': document.getElementById('price-range').value,
-        ambiance: document.getElementById('ambiance').value,
-      };
-
-      // Transform responses
-      const transformed = transformSurveyData(formData);
-      console.log('Transformed user data:', transformed);
-
-      // Ensure centroids are loaded before cluster assignment
-      await centroidsReady;
-
-      // Assign cluster
-      const assignedCluster = assignCluster(transformed);
-      console.log('Assigned to cluster:', assignedCluster);
-
-      // Create user profile
-      const userProfile = { 
-        ...transformed, 
-        Cluster: assignedCluster, 
-        Interests: formData.interests,
-        CreatedAt: new Date().toISOString()
-      };
-      console.log('User profile:', userProfile);
-
-            // Save to Firestore "users" collection (include auth uid/email when available)
-            try {
-                const usersRef = collection(db, 'users');
-                const profileToSave = {
-                    ...userProfile,
-                    uid: auth && auth.currentUser ? auth.currentUser.uid : null,
-                    email: auth && auth.currentUser ? auth.currentUser.email : null,
-                };
-                const docRef = await addDoc(usersRef, profileToSave);
-                console.log('User saved to Firestore with ID:', docRef.id);
-            } catch (err) {
-                console.error('Error saving user to Firestore:', err.message);
+        function calcDistance(p1, p2) {
+            let sum = 0;
+            const keys = ['Age', 'Gender', 'PriceRange', 'Income', 'Ambiance'];
+            for (const k of keys) {
+                const d = (p1[k] || 0) - (p2[k] || 0);
+                sum += d * d;
             }
+            return Math.sqrt(sum);
+        }
 
-      // Navigate to next page
-      window.location.href = 'stroll-nav.html';
-    });
-  }
-</script>
+        function findCluster(user) {
+            let minDist = Infinity;
+            let cluster = 0;
+            for (const c of mockCentroids) {
+                const dist = calcDistance(user, c);
+                if (dist < minDist) {
+                    minDist = dist;
+                    cluster = c.Cluster;
+                }
+            }
+            return cluster;
+        }
 
+        document.getElementById('surveyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const age = parseInt(document.getElementById('age').value);
+            const gender = document.getElementById('gender').value;
+            const income = parseFloat(document.getElementById('income').value);
+            const price = parseInt(document.getElementById('price').value);
+            const ambiance = parseInt(document.getElementById('ambiance').value);
+            
+            const genderMap = {male: 0, female: 1, other: 0.5};
+            
+            const userData = {
+                Age: age,
+                Gender: genderMap[gender] || 0.5,
+                PriceRange: price,
+                Income: Math.min(income / 375, 1),
+                Ambiance: ambiance
+            };
+            
+            const cluster = findCluster(userData);
+            
+            console.log('User data:', userData);
+            console.log('Assigned cluster:', cluster);
+            
+            alert('Survey submitted! Cluster: ' + cluster);
+        });
+    </script>
 </body>
 </html>
