@@ -267,6 +267,11 @@
             transform: scale(0.98);
         }
 
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .city-buildings {
             position: absolute;
             bottom: 0;
@@ -297,6 +302,20 @@
             width: 4px;
             height: 5px;
             background: rgba(255, 215, 0, 0.5);
+        }
+
+        .error-message {
+            display: none;
+            background: rgba(255, 100, 100, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .error-message.show {
+            display: block;
         }
     </style>
 </head>
@@ -364,6 +383,8 @@
             <h1>User Survey</h1>
             <p class="subtitle">Help us personalize your experience</p>
             
+            <div class="error-message" id="errorMessage"></div>
+            
             <form id="surveyForm">
                 <div class="form-group">
                     <label class="form-label" for="age">Age</label>
@@ -405,7 +426,7 @@
                     </select>
                 </div>
                 
-                <button type="submit" class="button">Submit Survey</button>
+                <button type="submit" class="button" id="submitBtn">Submit Survey</button>
             </form>
         </div>
 
@@ -461,12 +482,65 @@
         </div>
     </div>
 
-    <script>
-        const mockCentroids = [
-            {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
-            {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
-            {Cluster: 2, Age: 22, Gender: 0.6, PriceRange: 0, Income: 0.2, Ambiance: 1}
-        ];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+            authDomain: "stroll-c5285.firebaseapp.com",
+            projectId: "stroll-c5285",
+            storageBucket: "stroll-c5285.firebasestorage.app",
+            messagingSenderId: "465458957302",
+            appId: "1:465458957302:web:1b104b86069514164615d7",
+            measurementId: "G-PZY4GX7SSE"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Check if user is authenticated
+        let currentUser = null;
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = 'stroll-signin.html';
+            } else {
+                currentUser = user;
+                console.log('User authenticated:', user.email);
+            }
+        });
+
+        // Load clusters from Firebase
+        let mockCentroids = [];
+        async function loadClusters() {
+            try {
+                const clustersSnap = await getDocs(collection(db, 'clusters'));
+                if (!clustersSnap.empty) {
+                    mockCentroids = clustersSnap.docs.map(doc => doc.data());
+                    console.log('Loaded clusters from Firebase:', mockCentroids);
+                } else {
+                    // Fallback to hardcoded centroids if Firebase is empty
+                    mockCentroids = [
+                        {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
+                        {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
+                        {Cluster: 2, Age: 22, Gender: 0.6, PriceRange: 0, Income: 0.2, Ambiance: 1}
+                    ];
+                    console.log('Using fallback clusters');
+                }
+            } catch (err) {
+                console.error('Error loading clusters:', err);
+                // Use fallback
+                mockCentroids = [
+                    {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
+                    {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
+                    {Cluster: 2, Age: 22, Gender: 0.6, PriceRange: 0, Income: 0.2, Ambiance: 1}
+                ];
+            }
+        }
+
+        loadClusters();
 
         function calcDistance(p1, p2) {
             let sum = 0;
@@ -491,31 +565,73 @@
             return cluster;
         }
 
-        document.getElementById('surveyForm').addEventListener('submit', function(e) {
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        document.getElementById('surveyForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const age = parseInt(document.getElementById('age').value);
-            const gender = document.getElementById('gender').value;
-            const income = parseFloat(document.getElementById('income').value);
-            const price = parseInt(document.getElementById('price').value);
-            const ambiance = parseInt(document.getElementById('ambiance').value);
+            if (!currentUser) {
+                showError('Please log in first');
+                window.location.href = 'stroll-signin.html';
+                return;
+            }
             
-            const genderMap = {male: 0, female: 1, other: 0.5};
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
             
-            const userData = {
-                Age: age,
-                Gender: genderMap[gender] || 0.5,
-                PriceRange: price,
-                Income: Math.min(income / 375, 1),
-                Ambiance: ambiance
-            };
-            
-            const cluster = findCluster(userData);
-            
-            console.log('User data:', userData);
-            console.log('Assigned cluster:', cluster);
-            
-            alert('Survey submitted! Cluster: ' + cluster);
+            try {
+                const age = parseInt(document.getElementById('age').value);
+                const gender = document.getElementById('gender').value;
+                const income = parseFloat(document.getElementById('income').value);
+                const price = parseInt(document.getElementById('price').value);
+                const ambiance = parseInt(document.getElementById('ambiance').value);
+                
+                const genderMap = {male: 0, female: 1, other: 0.5};
+                
+                const userData = {
+                    Age: age,
+                    Gender: genderMap[gender] || 0.5,
+                    PriceRange: price,
+                    Income: Math.min(income / 375, 1),
+                    Ambiance: ambiance
+                };
+                
+                const cluster = findCluster(userData);
+                
+                // Save user profile to Firestore
+                await addDoc(collection(db, 'users'), {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    Cluster: cluster,
+                    Age: age,
+                    Gender: genderMap[gender] || 0.5,
+                    PriceRange: price,
+                    Income: Math.min(income / 375, 1),
+                    Ambiance: ambiance,
+                    preferences: {},
+                    CreatedAt: new Date().toISOString()
+                });
+                
+                console.log('User profile saved successfully');
+                console.log('Assigned cluster:', cluster);
+                
+                // Redirect to navigation page
+                window.location.href = 'stroll-nav.html';
+                
+            } catch (err) {
+                console.error('Error saving profile:', err);
+                showError('Failed to save profile. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Survey';
+            }
         });
     </script>
 </body>
