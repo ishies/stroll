@@ -856,9 +856,17 @@
                         console.log('✅ User authenticated with UID:', currentUserUID);
                         loadPOIWithFirebase();
                     } else {
-                        console.warn('⚠️ No authenticated user, using mock data');
-                        currentUserUID = null;
-                        loadPOIMock();
+                        onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    console.error('❌ USER NOT AUTHENTICATED — redirecting to sign in');
+    window.location.href = 'stroll-signin.html';
+    return;
+  }
+
+  currentUserUID = user.uid;
+  console.log('✅ User authenticated with UID:', currentUserUID);
+  loadPOIWithFirebase();
+});
                     }
                 });
             } catch (err) {
