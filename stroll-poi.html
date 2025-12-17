@@ -660,20 +660,8 @@
             heartBtn.classList.toggle('liked', isLiked);
             
             console.log('📊 Current preferences:', userPreferences);
-            console.log('🔍 About to save to Firebase...');
-            console.log('   - User:', auth?.currentUser?.email);
-            console.log('   - DB exists:', !!db);
-            console.log('   - UserDocId:', userDocId);
 
-            // Convert preferences to strings for Firestore compatibility
-            const preferencesForFirestore = {};
-            for (const key in userPreferences) {
-                preferencesForFirestore[key] = String(userPreferences[key]);
-            }
-            
-            console.log('📝 Preferences as strings:', preferencesForFirestore);
-
-            // Save to Firebase using stored document ID
+            // Save to Firebase
             try {
                 if (!auth || !auth.currentUser) {
                     console.error('❌ No authenticated user');
@@ -684,31 +672,43 @@
                     console.error('❌ No Firestore database instance');
                     return;
                 }
+
+                const user = auth.currentUser;
+                console.log('🔍 Saving for user:', user.email, 'UID:', user.uid);
+
+                // Convert preferences to strings for Firestore
+                const preferencesForFirestore = {};
+                for (const key in userPreferences) {
+                    preferencesForFirestore[key] = String(userPreferences[key]);
+                }
                 
-                if (!userDocId) {
-                    console.error('❌ No user document ID stored');
+                console.log('📝 Preferences to save:', preferencesForFirestore);
+
+                const { collection, query, where, getDocs, doc, updateDoc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                // Find user document by UID
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('uid', '==', user.uid));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    console.error('❌ No user document found for UID:', user.uid);
                     return;
                 }
 
-                const { doc, updateDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                
-                const userDocRef = doc(db, 'users', userDocId);
-                
-                console.log('🚀 Attempting Firebase update...');
-                
-                // Try update first, if fails use setDoc with merge
-                try {
-                    await updateDoc(userDocRef, {
-                        preferences: preferencesForFirestore
-                    });
-                    console.log('✅✅✅ Preferences UPDATED in Firebase:', preferencesForFirestore);
-                } catch (updateErr) {
-                    console.warn('⚠️ Update failed, trying setDoc with merge:', updateErr.message);
-                    await setDoc(userDocRef, {
-                        preferences: preferencesForFirestore
-                    }, { merge: true });
-                    console.log('✅✅✅ Preferences MERGED in Firebase:', preferencesForFirestore);
-                }
+                console.log('📄 Found', snapshot.size, 'user document(s)');
+
+                // Update all matching documents (in case of duplicates)
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(docSnapshot => {
+                    console.log('📝 Updating document:', docSnapshot.id);
+                    const docRef = doc(db, 'users', docSnapshot.id);
+                    batch.update(docRef, { preferences: preferencesForFirestore });
+                });
+
+                await batch.commit();
+                console.log('✅✅✅ Preferences saved to Firebase!');
+                console.log('   Saved data:', preferencesForFirestore);
                 
                 // Save activity log
                 await saveActivityLog(action, amenityType, poiName);
@@ -717,7 +717,7 @@
                 console.error('❌❌❌ Error updating preferences:', err);
                 console.error('   - Error code:', err.code);
                 console.error('   - Error message:', err.message);
-                console.error('   - Full error:', err);
+                console.error('   - Stack:', err.stack);
             }
         }
 
