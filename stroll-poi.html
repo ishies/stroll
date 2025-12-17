@@ -4,34 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stroll App - Nearby POI</title>
-    
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
-        import { getFirestore, collection, getDocs, query, where, limit, doc, setDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
-        
-        window.firebaseModules = {
-            initializeApp,
-            getAuth,
-            onAuthStateChanged,
-            getFirestore,
-            collection,
-            getDocs,
-            query,
-            where,
-            limit,
-            doc,
-            setDoc,
-            addDoc,
-            serverTimestamp
-        };
-        
-        // Signal that Firebase is loaded
-        window.firebaseLoaded = true;
-        window.dispatchEvent(new Event('firebaseready'));
-    </script>
-    
     <style>
         * {
             margin: 0;
@@ -299,18 +271,18 @@
     </div>
 
     <script>
-        // Firebase configuration - REPLACE WITH YOUR ACTUAL CREDENTIALS
+        // Firebase configuration - REPLACE WITH YOUR NEW CREDENTIALS
         const firebaseConfig = {
-            apiKey: "AIzaSyBVDqRNA6eutktUHF-av9R1vIt9X1xGmXk",
-            authDomain: "strollrec.firebaseapp.com",
-            projectId: "strollrec",
-            storageBucket: "strollrec.firebasestorage.app",
-            messagingSenderId: "148269095634",
-            appId: "1:148269095634:web:5b0f7e0b08ed94497cfef6"
+            apiKey: "YOUR_NEW_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // Set to true to use Firebase
-        const USE_FIREBASE = true;
+        // Set to true to use Firebase, false for mock data
+        const USE_FIREBASE = false;
 
         // Mock POI data for demonstration
         const mockPOIs = [
@@ -367,7 +339,6 @@
         let shownPOIs = []; // Track shown POIs to avoid repeats
         let userDocId = null; // Store user document ID for updates
         let firebaseApp = null; // Store Firebase app instance
-        let currentUserUID = null; // Store current user UID
 
         // Parse amenities from cluster data
         function parseAmenities(raw) {
@@ -420,21 +391,34 @@
         // Load POI with Firebase
         async function loadPOIWithFirebase() {
             try {
-                if (!currentUserUID) {
-                    console.warn('No user UID available');
+                const user = auth.currentUser;
+                if (!user) {
+                    console.warn('No authenticated user');
                     loadPOIMock();
                     return;
                 }
 
-                const { collection, getDocs, query, where, limit } = window.firebaseModules;
+                // Import Firebase modules dynamically (only if not already done)
+                if (!db) {
+                    const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                    db = getFirestore(firebaseApp);
+                    console.log('✅ Firestore initialized');
+                }
 
-                // Get user profile by UID
+                const { collection, getDocs, query, where, limit } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+
+                // Get user profile
                 const usersRef = collection(db, 'users');
-                let q = query(usersRef, where('uid', '==', currentUserUID));
+                let q = query(usersRef, where('uid', '==', user.uid));
                 let snap = await getDocs(q);
+                
+                if (snap.empty && user.email) {
+                    q = query(usersRef, where('email', '==', user.email));
+                    snap = await getDocs(q);
+                }
 
                 if (snap.empty) {
-                    console.warn('No user profile found for UID:', currentUserUID);
+                    console.warn('No user profile found');
                     loadPOIMock();
                     return;
                 }
@@ -481,112 +465,6 @@
                 console.log('User cluster:', cluster);
                 console.log('User stored preferences:', userPreferences);
                 console.log('User document ID:', userDocId);
-
-                // Get cluster centroid
-                const centroidsRef = collection(db, 'clusters');
-                const centQ = query(centroidsRef, where('Cluster', '==', cluster), limit(1));
-                const centSnap = await getDocs(centQ);
-
-                if (centSnap.empty) {
-                    console.warn('No centroid found');
-                    loadPOIMock();
-                    return;
-                }
-
-                const centroid = centSnap.docs[0].data();
-                const rawAmenities = centroid.amenities || centroid.Amenities;
-                const amenities = parseAmenities(rawAmenities);
-
-                if (!amenities || amenities.length === 0) {
-                    console.warn('No amenities in centroid');
-                    loadPOIMock();
-                    return;
-                }
-
-                // Initialize user preferences with cluster amenities if empty
-                if (Object.keys(userPreferences).length === 0) {
-                    console.log('🆕 Initializing preferences from cluster amenities');
-                    amenities.forEach(a => {
-                        // Start with normalized frequency (scale to 1-10 range)
-                        const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
-                        userPreferences[a.amenity] = normalizedFreq;
-                    });
-                    console.log('✅ Initial preferences set:', userPreferences);
-                    
-                    // Save initial preferences to Firebase
-                    await savePreferencesToFirebase();
-                }
-
-                console.log('📊 Final preferences for recommendations:', userPreferences);
-
-                // EXPLORATION: 20% chance to try a random amenity from cluster
-                const EXPLORATION_RATE = 0.20;
-                let amenityChoice;
-                
-                if (Math.random() < EXPLORATION_RATE) {
-                    // Explore: pick random amenity from cluster (unweighted)
-                    const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
-                    amenityChoice = randomAmenity.amenity;
-                    console.log('🔍 EXPLORING new amenity:', amenityChoice);
-                } else {
-                    // Exploit: Use ONLY user preferences for weighting
-                    const weightedAmenities = amenities.map(a => ({
-                        amenity: a.amenity,
-                        // Use only user preferences (no cluster frequency)
-                        frequency: userPreferences[a.amenity] || 1 // Default to 1 if no preference yet
-                    }));
-                    
-                    const picked = weightedPick(weightedAmenities);
-                    amenityChoice = picked.amenity;
-                    console.log('✅ Using user preference:', amenityChoice, 
-                               '(user pref:', userPreferences[amenityChoice] || 0, ')');
-                }
-
-                // Query POIs
-                const poisRef = collection(db, 'pois');
-                const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
-                const poisSnap = await getDocs(poisQ);
-
-                if (poisSnap.empty) {
-                    console.warn('No POIs found for', amenityChoice);
-                    loadPOIMock();
-                    return;
-                }
-
-                // Filter out recently shown POIs
-                let availableDocs = poisSnap.docs.filter(doc => 
-                    !shownPOIs.includes(doc.id)
-                );
-
-                // If all POIs have been shown, reset the list
-                if (availableDocs.length === 0) {
-                    console.log('All POIs shown, resetting list');
-                    shownPOIs = [];
-                    availableDocs = poisSnap.docs;
-                }
-
-                // Pick a random POI from available ones
-                const chosenDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
-                currentPOI = {
-                    ...chosenDoc.data(),
-                    _id: chosenDoc.id
-                };
-
-                // Track this POI as shown
-                shownPOIs.push(chosenDoc.id);
-
-                // Keep only last 10 shown POIs to allow variety
-                if (shownPOIs.length > 10) {
-                    shownPOIs.shift();
-                }
-
-                updateUI();
-
-            } catch (err) {
-                console.error('Firebase error:', err);
-                loadPOIMock();
-            }
-        }
 
                 // Get cluster centroid
                 const centroidsRef = collection(db, 'clusters');
@@ -759,14 +637,15 @@
 
         // Save activity log to Firebase
         async function saveActivityLog(action, amenityType, poiName) {
-            if (!USE_FIREBASE || !db || !currentUserUID) return;
+            if (!USE_FIREBASE || !db || !auth?.currentUser) return;
             
             try {
-                const { collection, addDoc, serverTimestamp } = window.firebaseModules;
+                const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
                 
                 const logsRef = collection(db, 'activity_logs');
                 await addDoc(logsRef, {
-                    uid: currentUserUID,
+                    uid: auth.currentUser.uid,
+                    email: auth.currentUser.email,
                     action: action, // 'like' or 'unlike'
                     amenityType: amenityType,
                     poiName: poiName,
@@ -783,27 +662,28 @@
         // Save preferences to Firebase (helper function)
         async function savePreferencesToFirebase() {
             try {
-                if (!currentUserUID || !db) {
-                    console.warn('⚠️ Cannot save preferences - missing UID or db');
+                if (!auth || !auth.currentUser || !db) {
+                    console.warn('⚠️ Cannot save preferences - missing auth or db');
                     return false;
                 }
 
-                console.log('💾 Starting to save preferences for UID:', currentUserUID);
+                const user = auth.currentUser;
+                console.log('💾 Starting to save preferences for:', user.email);
                 console.log('💾 Current preferences object:', userPreferences);
                 
                 // Store preferences directly as the object - Firestore will handle it as a map
                 // This is actually the correct way - maps are more queryable than strings
                 console.log('💾 Saving preferences as Firestore map (this is correct)');
 
-                const { collection, query, where, getDocs, doc, setDoc } = window.firebaseModules;
+                const { collection, query, where, getDocs, doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
                 
                 // Find user document by UID
                 const usersRef = collection(db, 'users');
-                const q = query(usersRef, where('uid', '==', currentUserUID));
+                const q = query(usersRef, where('uid', '==', user.uid));
                 const snapshot = await getDocs(q);
                 
                 if (snapshot.empty) {
-                    console.error('❌ No user document found for UID:', currentUserUID);
+                    console.error('❌ No user document found for UID:', user.uid);
                     return false;
                 }
 
@@ -939,37 +819,26 @@
                 return;
             }
 
-            // Wait for Firebase modules to load
-            if (!window.firebaseLoaded) {
-                await new Promise(resolve => {
-                    window.addEventListener('firebaseready', resolve, { once: true });
-                });
-            }
-
             try {
-                const { initializeApp, getAuth, onAuthStateChanged, getFirestore } = window.firebaseModules;
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+                const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
                 
                 firebaseApp = initializeApp(firebaseConfig);
                 auth = getAuth(firebaseApp);
-                db = getFirestore(firebaseApp);
                 
                 console.log('✅ Firebase app initialized');
-                console.log('✅ Firestore initialized');
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        currentUserUID = user.uid;
-                        console.log('✅ User authenticated with UID:', currentUserUID);
+                        console.log('✅ User authenticated:', user.email);
                         loadPOIWithFirebase();
                     } else {
                         console.warn('⚠️ No authenticated user, using mock data');
-                        currentUserUID = null;
                         loadPOIMock();
                     }
                 });
             } catch (err) {
                 console.error('❌ Firebase initialization error:', err);
-                console.error('Falling back to mock data');
                 loadPOIMock();
             }
         }
