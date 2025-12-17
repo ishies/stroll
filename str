@@ -429,9 +429,8 @@
                 const { collection, getDocs, query, where, limit } = window.firebaseModules;
 
                 // Get user profile by UID
-                const usersRef = collection(db, 'users');
-                let q = query(usersRef, where('uid', '==', currentUserUID));
-                let snap = await getDocs(q);
+               const userRef = doc(db, 'users', currentUserUID);
+const snap = await getDoc(userRef);
 
                 if (snap.empty) {
                     console.warn('No user profile found for UID:', currentUserUID);
