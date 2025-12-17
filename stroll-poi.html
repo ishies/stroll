@@ -524,9 +524,21 @@
         }
 
         async function handleLike() {
-            if (!currentPOI) return;
+            if (!currentPOI) {
+                console.warn('⚠️ No current POI to like');
+                return;
+            }
 
             const amenityType = currentPOI.amenity || currentPOI.type;
+            
+            console.log('🎯 Current POI:', currentPOI.name);
+            console.log('🏷️ Amenity type being tracked:', amenityType);
+            console.log('📋 Full POI data:', currentPOI);
+            
+            if (!amenityType) {
+                console.error('❌ No amenity type found for this POI!');
+                return;
+            }
             
             if (!isLiked) {
                 isLiked = true;
@@ -540,14 +552,14 @@
                         delete userPreferences[amenityType];
                     }
                 }
-                console.log('💔 UNLIKED:', amenityType);
+                console.log('💔 UNLIKED:', amenityType, '- New count:', userPreferences[amenityType] || 0);
             }
 
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
-            console.log('📊 Current preferences:', userPreferences);
+            console.log('📊 Current preferences:', JSON.stringify(userPreferences, null, 2));
             
             await savePreferencesToFirebase();
         }
@@ -597,8 +609,10 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    const address = currentPOI.address || currentPOI.name || '';
-                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                    // Use name first, then fall back to address
+                    const searchQuery = currentPOI.name || currentPOI.address || '';
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                    console.log('🗺️ Opening Google Maps for:', searchQuery);
                     window.open(mapsUrl, '_blank');
                 }
             });
