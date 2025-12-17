@@ -405,10 +405,15 @@
                     await savePreferencesToFirebase();
                 }
 
-                const EXPLORATION_RATE = 0.20;
+                // Get variability from localStorage (0-100)
+                const variability = parseInt(localStorage.getItem('strollVariability') || '20');
+                const explorationRate = variability / 100; // Convert to 0-1
+                
+                console.log('🎲 Using exploration rate:', explorationRate * 100 + '%');
+
                 let amenityChoice;
                 
-                if (Math.random() < EXPLORATION_RATE) {
+                if (Math.random() < explorationRate) {
                     const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
                     amenityChoice = randomAmenity.amenity;
                     console.log('🔍 EXPLORING:', amenityChoice);
@@ -609,7 +614,7 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    console.log('📍 Full POI data:', currentPOI);
+                    console.log('🔍 Full POI data:', currentPOI);
                     
                     let mapsUrl = '';
                     
