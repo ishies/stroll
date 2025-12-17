@@ -646,16 +646,16 @@
             try {
                 if (!auth || !auth.currentUser || !db) {
                     console.warn('⚠️ Cannot save preferences - missing auth or db');
-                    return;
+                    return false;
                 }
 
                 const user = auth.currentUser;
+                console.log('💾 Starting to save preferences for:', user.email);
+                console.log('💾 Current preferences object:', userPreferences);
                 
-                // Convert preferences to strings for Firestore
-                const preferencesForFirestore = {};
-                for (const key in userPreferences) {
-                    preferencesForFirestore[key] = String(userPreferences[key]);
-                }
+                // Convert preferences object to a single JSON string
+                const preferencesString = JSON.stringify(userPreferences);
+                console.log('💾 Preferences as JSON string:', preferencesString);
 
                 const { collection, query, where, getDocs, doc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
                 
@@ -666,21 +666,31 @@
                 
                 if (snapshot.empty) {
                     console.error('❌ No user document found for UID:', user.uid);
-                    return;
+                    return false;
                 }
+
+                console.log('📄 Found', snapshot.size, 'user document(s)');
 
                 // Update all matching documents
                 const batch = writeBatch(db);
                 snapshot.docs.forEach(docSnapshot => {
+                    console.log('📝 Updating document ID:', docSnapshot.id);
                     const docRef = doc(db, 'users', docSnapshot.id);
-                    batch.update(docRef, { preferences: preferencesForFirestore });
+                    batch.update(docRef, { 
+                        preferences: preferencesString  // Save as a single string
+                    });
                 });
 
                 await batch.commit();
-                console.log('✅ Preferences saved to Firebase:', preferencesForFirestore);
+                console.log('✅✅✅ Preferences SAVED to Firebase as string!');
+                console.log('✅ Saved value:', preferencesString);
+                return true;
                 
             } catch (err) {
-                console.error('❌ Error saving preferences:', err);
+                console.error('❌❌❌ Error saving preferences:', err);
+                console.error('Error code:', err.code);
+                console.error('Error message:', err.message);
+                return false;
             }
         }
 
