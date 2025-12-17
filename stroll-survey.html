@@ -610,25 +610,18 @@
                 console.log('🔍 Finding user document for UID:', currentUser.uid);
                 
                 // Find the existing user document by UID
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, where('uid', '==', currentUser.uid));
-                const querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    throw new Error('User document not found. Please sign up again.');
-                }
-                
-                // Update the EXISTING document (don't create a new one)
-                const userDocRef = doc(db, 'users', querySnapshot.docs[0].id);
-                await updateDoc(userDocRef, {
-                    Cluster: cluster,
-                    Age: age,
-                    Gender: genderMap[gender] || 0.5,
-                    PriceRange: price,
-                    Income: Math.min(income / 375, 1),
-                    Ambiance: ambiance,
-                    UpdatedAt: serverTimestamp()
-                });
+                // ✅ DIRECTLY reference the user document by UID
+const userDocRef = doc(db, 'users', currentUser.uid);
+
+await updateDoc(userDocRef, {
+    Cluster: cluster,
+    Age: age,
+    Gender: genderMap[gender] || 0.5,
+    PriceRange: price,
+    Income: Math.min(income / 375, 1),
+    Ambiance: ambiance,
+    UpdatedAt: serverTimestamp()
+});
                 
                 console.log('✅ Profile updated! Cluster:', cluster);
                 console.log('✅ Document ID:', querySnapshot.docs[0].id);
