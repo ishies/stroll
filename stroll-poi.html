@@ -430,9 +430,9 @@
 
                 // Get user profile by UID
                const userRef = doc(db, 'users', currentUserUID);
-const snap = await getDoc(userRef);
+const userSnap = await getDoc(userRef);
 
-                if (snap.empty) {
+if (!userSnap.exists()) {
                     console.warn('No user profile found for UID:', currentUserUID);
                     loadPOIMock();
                     return;
