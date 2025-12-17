@@ -338,6 +338,7 @@
         let auth = null;
         let shownPOIs = []; // Track shown POIs to avoid repeats
         let userDocId = null; // Store user document ID for updates
+        let firebaseApp = null; // Store Firebase app instance
 
         // Parse amenities from cluster data
         function parseAmenities(raw) {
@@ -397,9 +398,14 @@
                     return;
                 }
 
-                // Import Firebase modules dynamically
-                const { getFirestore, collection, getDocs, query, where, limit } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                db = getFirestore();
+                // Import Firebase modules dynamically (only if not already done)
+                if (!db) {
+                    const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                    db = getFirestore(firebaseApp);
+                    console.log('✅ Firestore initialized');
+                }
+
+                const { collection, getDocs, query, where, limit } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
 
                 // Get user profile
                 const usersRef = collection(db, 'users');
@@ -430,7 +436,13 @@
                 userDocId = userDoc.id; // Store for later updates
                 const userData = userDoc.data();
                 const cluster = userData.Cluster;
-                userPreferences = userData.preferences || {};
+                
+                // Parse preferences - handle both string and number formats
+                const rawPrefs = userData.preferences || {};
+                userPreferences = {};
+                for (const key in rawPrefs) {
+                    userPreferences[key] = parseInt(rawPrefs[key]) || 0;
+                }
 
                 console.log('User cluster:', cluster);
                 console.log('User preferences:', userPreferences);
@@ -613,28 +625,59 @@
             heartBtn.classList.toggle('liked', isLiked);
             
             console.log('Current preferences:', userPreferences);
+            console.log('About to save to Firebase...');
+            console.log('User:', auth?.currentUser?.email);
+            console.log('DB:', !!db);
+            console.log('UserDocId:', userDocId);
+
+            // Convert preferences to strings for Firestore compatibility
+            const preferencesForFirestore = {};
+            for (const key in userPreferences) {
+                preferencesForFirestore[key] = String(userPreferences[key]);
+            }
+            
+            console.log('Preferences as strings:', preferencesForFirestore);
 
             // Save to Firebase using stored document ID
             try {
-                const user = auth.currentUser;
-                if (user && db && userDocId) {
-                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                    
-                    const userDocRef = doc(db, 'users', userDocId);
-                    await updateDoc(userDocRef, {
-                        preferences: userPreferences
-                    });
-                    console.log('✅ Preferences saved to Firebase:', userPreferences);
-                } else {
-                    console.warn('⚠️ Cannot save - missing:', {
-                        user: !!user,
-                        db: !!db,
-                        userDocId: !!userDocId
-                    });
+                if (!auth || !auth.currentUser) {
+                    console.error('❌ No authenticated user');
+                    return;
                 }
+                
+                if (!db) {
+                    console.error('❌ No Firestore database instance');
+                    return;
+                }
+                
+                if (!userDocId) {
+                    console.error('❌ No user document ID stored');
+                    return;
+                }
+
+                const { doc, updateDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                const userDocRef = doc(db, 'users', userDocId);
+                
+                // Try update first, if fails use setDoc with merge
+                try {
+                    await updateDoc(userDocRef, {
+                        preferences: preferencesForFirestore
+                    });
+                    console.log('✅ Preferences UPDATED in Firebase:', preferencesForFirestore);
+                } catch (updateErr) {
+                    console.warn('⚠️ Update failed, trying setDoc with merge:', updateErr.message);
+                    await setDoc(userDocRef, {
+                        preferences: preferencesForFirestore
+                    }, { merge: true });
+                    console.log('✅ Preferences MERGED in Firebase:', preferencesForFirestore);
+                }
+                
             } catch (err) {
                 console.error('❌ Error updating preferences:', err);
-                console.error('Error details:', err.message);
+                console.error('Error code:', err.code);
+                console.error('Error message:', err.message);
+                console.error('Full error:', err);
             }
         }
 
@@ -694,20 +737,22 @@
                 const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
                 const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
                 
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
+                firebaseApp = initializeApp(firebaseConfig);
+                auth = getAuth(firebaseApp);
+                
+                console.log('✅ Firebase app initialized');
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        console.log('User authenticated:', user.email);
+                        console.log('✅ User authenticated:', user.email);
                         loadPOIWithFirebase();
                     } else {
-                        console.warn('No authenticated user, using mock data');
+                        console.warn('⚠️ No authenticated user, using mock data');
                         loadPOIMock();
                     }
                 });
             } catch (err) {
-                console.error('Firebase initialization error:', err);
+                console.error('❌ Firebase initialization error:', err);
                 loadPOIMock();
             }
         }
