@@ -5,33 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stroll App - Nearby POI</title>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
-        import { getFirestore, collection, getDocs, query, where, limit, doc, setDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
-        
-        window.firebaseModules = {
-            initializeApp,
-            getAuth,
-            onAuthStateChanged,
-            getFirestore,
-            collection,
-            getDocs,
-            query,
-            where,
-            limit,
-            doc,
-            setDoc,
-            addDoc,
-            serverTimestamp
-        };
-        
-        // Signal that Firebase is loaded
-        window.firebaseLoaded = true;
-        window.dispatchEvent(new Event('firebaseready'));
-    </script>
-    
     <style>
         * {
             margin: 0;
@@ -257,29 +230,18 @@
         <div class="content">
             <div class="map-container">
                 <svg class="map-image" viewBox="0 0 270 280" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Background -->
                     <rect width="270" height="280" fill="#e8f5e9"/>
-                    
-                    <!-- Roads -->
                     <line x1="0" y1="140" x2="270" y2="140" stroke="#cbd5e0" stroke-width="8"/>
                     <line x1="135" y1="0" x2="135" y2="280" stroke="#cbd5e0" stroke-width="8"/>
-                    
-                    <!-- Green spaces (parks) -->
                     <rect x="20" y="20" width="80" height="80" fill="#81c784" rx="8"/>
                     <rect x="170" y="170" width="80" height="80" fill="#81c784" rx="8"/>
-                    
-                    <!-- Buildings -->
                     <rect x="150" y="30" width="40" height="50" fill="#a0aec0" rx="4"/>
                     <rect x="200" y="40" width="35" height="60" fill="#a0aec0" rx="4"/>
                     <rect x="30" y="160" width="50" height="45" fill="#a0aec0" rx="4"/>
                     <rect x="90" y="175" width="30" height="55" fill="#a0aec0" rx="4"/>
-                    
-                    <!-- Location pin (user location) -->
                     <circle cx="135" cy="140" r="20" fill="#4a9b63" opacity="0.3"/>
                     <circle cx="135" cy="140" r="10" fill="#4a9b63"/>
                     <circle cx="135" cy="140" r="5" fill="white"/>
-                    
-                    <!-- POI marker (coffee shop) -->
                     <g transform="translate(180, 90)">
                         <path d="M 0 -20 Q -8 -20, -8 -12 L -8 12 Q -8 20, 0 20 Q 8 20, 8 12 L 8 -12 Q 8 -20, 0 -20 Z" fill="#8b5a3c"/>
                         <circle cx="0" cy="25" r="3" fill="#8b5a3c"/>
@@ -298,99 +260,54 @@
         </div>
     </div>
 
-    <script>
-        // Firebase configuration - REPLACE WITH YOUR ACTUAL CREDENTIALS
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { getFirestore, collection, getDocs, query, where, limit, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        
         const firebaseConfig = {
-  apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
-  authDomain: "stroll-c5285.firebaseapp.com",
-  projectId: "stroll-c5285",
-  storageBucket: "stroll-c5285.firebasestorage.app",
-  messagingSenderId: "465458957302",
-  appId: "1:465458957302:web:1b104b86069514164615d7"
-};
+            apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+            authDomain: "stroll-c5285.firebaseapp.com",
+            projectId: "stroll-c5285",
+            storageBucket: "stroll-c5285.firebasestorage.app",
+            messagingSenderId: "465458957302",
+            appId: "1:465458957302:web:1b104b86069514164615d7",
+            measurementId: "G-PZY4GX7SSE"
+        };
 
-        // Set to true to use Firebase
-        const USE_FIREBASE = true;
-
-        // Mock POI data for demonstration
         const mockPOIs = [
-            {
-                name: "Blue Bottle Coffee",
-                address: "450 W 15th St, New York, NY 10011",
-                type: "coffee_shop",
-                amenity: "cafe"
-            },
-            {
-                name: "Stumptown Coffee Roasters",
-                address: "30 W 8th St, New York, NY 10011",
-                type: "coffee_shop",
-                amenity: "cafe"
-            },
-            {
-                name: "The High Line",
-                address: "New York, NY 10011",
-                type: "park",
-                amenity: "park"
-            },
-            {
-                name: "Chelsea Market",
-                address: "75 9th Ave, New York, NY 10011",
-                type: "market",
-                amenity: "marketplace"
-            },
-            {
-                name: "Joe's Pizza",
-                address: "7 Carmine St, New York, NY 10014",
-                type: "restaurant",
-                amenity: "restaurant"
-            },
-            {
-                name: "Washington Square Park",
-                address: "Washington Square, New York, NY 10012",
-                type: "park",
-                amenity: "park"
-            },
-            {
-                name: "Strand Bookstore",
-                address: "828 Broadway, New York, NY 10003",
-                type: "bookstore",
-                amenity: "bookstore"
-            }
+            { name: "Blue Bottle Coffee", address: "450 W 15th St, New York, NY 10011", type: "coffee_shop", amenity: "cafe" },
+            { name: "Stumptown Coffee Roasters", address: "30 W 8th St, New York, NY 10011", type: "coffee_shop", amenity: "cafe" },
+            { name: "The High Line", address: "New York, NY 10011", type: "park", amenity: "park" },
+            { name: "Chelsea Market", address: "75 9th Ave, New York, NY 10011", type: "market", amenity: "marketplace" },
+            { name: "Joe's Pizza", address: "7 Carmine St, New York, NY 10014", type: "restaurant", amenity: "restaurant" },
+            { name: "Washington Square Park", address: "Washington Square, New York, NY 10012", type: "park", amenity: "park" },
+            { name: "Strand Bookstore", address: "828 Broadway, New York, NY 10003", type: "bookstore", amenity: "bookstore" }
         ];
 
         let currentPOI = null;
-        let likedPOIs = [];
         let isLiked = false;
         let userPreferences = {};
         let db = null;
         let auth = null;
-        let shownPOIs = []; // Track shown POIs to avoid repeats
-        let userDocId = null; // Store user document ID for updates
-        let firebaseApp = null; // Store Firebase app instance
-        let currentUserUID = null; // Store current user UID
+        let shownPOIs = [];
+        let currentUserUID = null;
+        let app = null;
 
-        // Parse amenities from cluster data
         function parseAmenities(raw) {
             if (!raw) return [];
-            
             if (typeof raw === 'string') {
                 const tupleRegex = /\(\s*([^,]+?)\s*,\s*(\d+)\s*\)/g;
                 const matches = [];
                 let match;
                 while ((match = tupleRegex.exec(raw)) !== null) {
-                    matches.push({
-                        amenity: match[1].trim(),
-                        frequency: Number(match[2]) || 1
-                    });
+                    matches.push({ amenity: match[1].trim(), frequency: Number(match[2]) || 1 });
                 }
                 if (matches.length > 0) return matches;
             }
-            
             if (Array.isArray(raw)) {
                 return raw.map(item => {
-                    if (Array.isArray(item)) {
-                        return { amenity: item[0], frequency: Number(item[1]) || 0 };
-                    }
+                    if (Array.isArray(item)) return { amenity: item[0], frequency: Number(item[1]) || 0 };
                     if (typeof item === 'object') {
                         const amen = item.amenity || item.name || item[0];
                         const freq = item.frequency || item.freq || item.count || 1;
@@ -399,16 +316,12 @@
                     return { amenity: String(item), frequency: 1 };
                 });
             }
-            
             return [{ amenity: String(raw), frequency: 1 }];
         }
 
-        // Weighted selection
         function weightedPick(items) {
             const total = items.reduce((s, it) => s + (Number(it.frequency) || 0), 0);
-            if (total <= 0) {
-                return items[Math.floor(Math.random() * items.length)];
-            }
+            if (total <= 0) return items[Math.floor(Math.random() * items.length)];
             let r = Math.random() * total;
             for (const it of items) {
                 r -= (Number(it.frequency) || 0);
@@ -417,7 +330,6 @@
             return items[items.length - 1];
         }
 
-        // Load POI with Firebase
         async function loadPOIWithFirebase() {
             try {
                 if (!currentUserUID) {
@@ -426,62 +338,34 @@
                     return;
                 }
 
-                const { collection, getDocs, query, where, limit } = window.firebaseModules;
+                // ✅ FIX: Use getDoc with doc reference instead of query
+                const userRef = doc(db, 'users', currentUserUID);
+                const userSnap = await getDoc(userRef);
 
-                // Get user profile by UID
-               const userRef = doc(db, 'users', currentUserUID);
-const userSnap = await getDoc(userRef);
-
-if (!userSnap.exists()) {
+                if (!userSnap.exists()) {
                     console.warn('No user profile found for UID:', currentUserUID);
                     loadPOIMock();
                     return;
                 }
 
-                // Get most recent profile and store document ID
-                let userDoc = snap.docs[0];
-                if (snap.size > 1) {
-                    userDoc = snap.docs.reduce((best, d) => {
-                        const a = best.data().CreatedAt || '';
-                        const b = d.data().CreatedAt || '';
-                        return (b > a) ? d : best;
-                    }, snap.docs[0]);
-                }
-
-                userDocId = userDoc.id; // Store for later updates
-                const userData = userDoc.data();
+                const userData = userSnap.data();
                 const cluster = userData.Cluster;
                 
-                // Parse preferences from Firebase (stored as map)
                 const rawPrefs = userData.preferences;
                 userPreferences = {};
                 
                 if (rawPrefs) {
                     if (typeof rawPrefs === 'object' && !Array.isArray(rawPrefs)) {
-                        // It's a map object, convert to numbers
                         for (const key in rawPrefs) {
                             const value = rawPrefs[key];
-                            // Handle both string and number values
                             userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
                         }
-                        console.log('✅ Loaded preferences from Firestore map:', userPreferences);
-                    } else if (typeof rawPrefs === 'string') {
-                        // Legacy: It's a JSON string, parse it
-                        try {
-                            userPreferences = JSON.parse(rawPrefs);
-                            console.log('⚠️ Loaded preferences from legacy string format:', userPreferences);
-                        } catch (err) {
-                            console.error('❌ Error parsing preferences string:', err);
-                            userPreferences = {};
-                        }
+                        console.log('✅ Loaded preferences:', userPreferences);
                     }
                 }
 
                 console.log('User cluster:', cluster);
-                console.log('User stored preferences:', userPreferences);
-                console.log('User document ID:', userDocId);
 
-                // Get cluster centroid
                 const centroidsRef = collection(db, 'clusters');
                 const centQ = query(centroidsRef, where('Cluster', '==', cluster), limit(1));
                 const centSnap = await getDocs(centQ);
@@ -502,46 +386,32 @@ if (!userSnap.exists()) {
                     return;
                 }
 
-                // Initialize user preferences with cluster amenities if empty
                 if (Object.keys(userPreferences).length === 0) {
-                    console.log('🆕 Initializing preferences from cluster amenities');
+                    console.log('🆕 Initializing preferences');
                     amenities.forEach(a => {
-                        // Start with normalized frequency (scale to 1-10 range)
                         const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
                         userPreferences[a.amenity] = normalizedFreq;
                     });
-                    console.log('✅ Initial preferences set:', userPreferences);
-                    
-                    // Save initial preferences to Firebase
                     await savePreferencesToFirebase();
                 }
 
-                console.log('📊 Final preferences for recommendations:', userPreferences);
-
-                // EXPLORATION: 20% chance to try a random amenity from cluster
                 const EXPLORATION_RATE = 0.20;
                 let amenityChoice;
                 
                 if (Math.random() < EXPLORATION_RATE) {
-                    // Explore: pick random amenity from cluster (unweighted)
                     const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
                     amenityChoice = randomAmenity.amenity;
-                    console.log('🔍 EXPLORING new amenity:', amenityChoice);
+                    console.log('🔍 EXPLORING:', amenityChoice);
                 } else {
-                    // Exploit: Use ONLY user preferences for weighting
                     const weightedAmenities = amenities.map(a => ({
                         amenity: a.amenity,
-                        // Use only user preferences (no cluster frequency)
-                        frequency: userPreferences[a.amenity] || 1 // Default to 1 if no preference yet
+                        frequency: userPreferences[a.amenity] || 1
                     }));
-                    
                     const picked = weightedPick(weightedAmenities);
                     amenityChoice = picked.amenity;
-                    console.log('✅ Using user preference:', amenityChoice, 
-                               '(user pref:', userPreferences[amenityChoice] || 0, ')');
+                    console.log('✅ Using preference:', amenityChoice);
                 }
 
-                // Query POIs
                 const poisRef = collection(db, 'pois');
                 const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
                 const poisSnap = await getDocs(poisQ);
@@ -552,32 +422,16 @@ if (!userSnap.exists()) {
                     return;
                 }
 
-                // Filter out recently shown POIs
-                let availableDocs = poisSnap.docs.filter(doc => 
-                    !shownPOIs.includes(doc.id)
-                );
-
-                // If all POIs have been shown, reset the list
+                let availableDocs = poisSnap.docs.filter(doc => !shownPOIs.includes(doc.id));
                 if (availableDocs.length === 0) {
-                    console.log('All POIs shown, resetting list');
                     shownPOIs = [];
                     availableDocs = poisSnap.docs;
                 }
 
-                // Pick a random POI from available ones
                 const chosenDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
-                currentPOI = {
-                    ...chosenDoc.data(),
-                    _id: chosenDoc.id
-                };
-
-                // Track this POI as shown
+                currentPOI = { ...chosenDoc.data(), _id: chosenDoc.id };
                 shownPOIs.push(chosenDoc.id);
-
-                // Keep only last 10 shown POIs to allow variety
-                if (shownPOIs.length > 10) {
-                    shownPOIs.shift();
-                }
+                if (shownPOIs.length > 10) shownPOIs.shift();
 
                 updateUI();
 
@@ -587,59 +441,20 @@ if (!userSnap.exists()) {
             }
         }
 
-        // Load POI with mock data
         function loadPOIMock() {
-            let availablePOIs = mockPOIs.filter(poi => 
-                !shownPOIs.includes(poi.name)
-            );
-
-            // If all POIs shown, reset
+            let availablePOIs = mockPOIs.filter(poi => !shownPOIs.includes(poi.name));
             if (availablePOIs.length === 0) {
-                console.log('All mock POIs shown, resetting');
                 shownPOIs = [];
                 availablePOIs = mockPOIs;
             }
             
-            // EXPLORATION: 20% chance to show random POI regardless of preferences
-            const EXPLORATION_RATE = 0.20;
-            
-            if (Math.random() < EXPLORATION_RATE) {
-                // Explore: show any random POI
-                currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
-                console.log('🔍 EXPLORING new type:', currentPOI.type);
-            } else {
-                // Exploit: if user has preferences, weight by them
-                let filteredPOIs = availablePOIs;
-                if (Object.keys(userPreferences).length > 0) {
-                    const preferredTypes = Object.keys(userPreferences)
-                        .filter(k => userPreferences[k] > 0)
-                        .sort((a, b) => userPreferences[b] - userPreferences[a]);
-                    
-                    if (preferredTypes.length > 0) {
-                        const topType = preferredTypes[0];
-                        const similarPOIs = availablePOIs.filter(poi => 
-                            poi.type === topType || poi.amenity === topType
-                        );
-                        if (similarPOIs.length > 0) {
-                            filteredPOIs = similarPOIs;
-                        }
-                    }
-                }
-                
-                currentPOI = filteredPOIs[Math.floor(Math.random() * filteredPOIs.length)];
-                console.log('✅ Using preferred type:', currentPOI.type);
-            }
-
-            // Track shown POI
+            currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
             shownPOIs.push(currentPOI.name);
-            if (shownPOIs.length > 5) {
-                shownPOIs.shift();
-            }
+            if (shownPOIs.length > 5) shownPOIs.shift();
             
             updateUI();
         }
 
-        // Update UI with current POI
         function updateUI() {
             document.querySelector('.poi-name').textContent = currentPOI.name || 'Recommended Place';
             document.querySelector('.poi-distance').textContent = currentPOI.address || '';
@@ -650,105 +465,43 @@ if (!userSnap.exists()) {
             heartBtn.classList.remove('liked');
         }
 
-        // Save activity log to Firebase
-        async function saveActivityLog(action, amenityType, poiName) {
-            if (!USE_FIREBASE || !db || !currentUserUID) return;
-            
-            try {
-                const { collection, addDoc, serverTimestamp } = window.firebaseModules;
-                
-                const logsRef = collection(db, 'activity_logs');
-                await addDoc(logsRef, {
-                    uid: currentUserUID,
-                    action: action, // 'like' or 'unlike'
-                    amenityType: amenityType,
-                    poiName: poiName,
-                    timestamp: serverTimestamp(),
-                    preferences: userPreferences
-                });
-                
-                console.log('📝 Activity log saved:', action, amenityType);
-            } catch (err) {
-                console.error('❌ Failed to save activity log:', err);
-            }
-        }
-
-        // Save preferences to Firebase (helper function)
         async function savePreferencesToFirebase() {
             try {
                 if (!currentUserUID || !db) {
-                    console.warn('⚠️ Cannot save preferences - missing UID or db');
+                    console.warn('⚠️ Cannot save - missing UID or db');
                     return false;
                 }
-
-                console.log('💾 Starting to save preferences for UID:', currentUserUID);
-                console.log('💾 Current preferences object:', userPreferences);
                 
-                // Store preferences directly as the object - Firestore will handle it as a map
-                // This is actually the correct way - maps are more queryable than strings
-                console.log('💾 Saving preferences as Firestore map (this is correct)');
-
-                const { collection, query, where, getDocs, doc, setDoc } = window.firebaseModules;
+                console.log('💾 Saving preferences for UID:', currentUserUID);
+                console.log('💾 Preferences:', userPreferences);
                 
-                // Find user document by UID
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, where('uid', '==', currentUserUID));
-                const snapshot = await getDocs(q);
+                const userRef = doc(db, 'users', currentUserUID);
                 
-                if (snapshot.empty) {
-                    console.error('❌ No user document found for UID:', currentUserUID);
-                    return false;
-                }
-
-                console.log('📄 Found', snapshot.size, 'user document(s)');
-
-                // Update each document - save preferences as map
-                for (const docSnapshot of snapshot.docs) {
-                    console.log('📝 Updating document ID:', docSnapshot.id);
-                    const docRef = doc(db, 'users', docSnapshot.id);
-                    
-                    // Save directly as object - Firestore will store as map
-                    await setDoc(docRef, { 
-                        preferences: userPreferences  // This becomes a map in Firestore
-                    }, { merge: true });
-                    
-                    console.log('✅ Document updated:', docSnapshot.id);
-                }
-
-                console.log('✅✅✅ Preferences SAVED to Firebase as map!');
-                console.log('✅ Saved data:', userPreferences);
+                // Use updateDoc instead of setDoc to only update existing document
+                await updateDoc(userRef, { 
+                    preferences: userPreferences,
+                    UpdatedAt: serverTimestamp()
+                });
+                
+                console.log('✅ Preferences saved successfully');
                 return true;
-                
             } catch (err) {
-                console.error('❌❌❌ Error saving preferences:', err);
+                console.error('❌ Error saving preferences:', err);
                 console.error('Error code:', err.code);
                 console.error('Error message:', err.message);
-                console.error('Full error:', err);
                 return false;
             }
         }
 
-        // Handle like with Firebase
-        async function handleLikeWithFirebase() {
-            console.log('🟢 handleLikeWithFirebase CALLED');
-            
-            if (!currentPOI) {
-                console.log('❌ No current POI');
-                return;
-            }
+        async function handleLike() {
+            if (!currentPOI) return;
 
             const amenityType = currentPOI.amenity || currentPOI.type;
-            const poiName = currentPOI.name || 'Unknown';
             
-            console.log('🟢 Processing like for:', poiName, 'type:', amenityType);
-            console.log('📊 Preferences BEFORE:', JSON.stringify(userPreferences));
-            
-            let action;
             if (!isLiked) {
                 isLiked = true;
                 userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-                action = 'like';
-                console.log('❤️ LIKED:', amenityType, '- New count:', userPreferences[amenityType]);
+                console.log('❤️ LIKED:', amenityType);
             } else {
                 isLiked = false;
                 if (userPreferences[amenityType] > 0) {
@@ -757,127 +510,55 @@ if (!userSnap.exists()) {
                         delete userPreferences[amenityType];
                     }
                 }
-                action = 'unlike';
                 console.log('💔 UNLIKED:', amenityType);
             }
 
-            // Update UI immediately
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
-            console.log('📊 Preferences AFTER:', JSON.stringify(userPreferences));
-
-            // Save to Firebase
-            const saved = await savePreferencesToFirebase();
-            
-            if (saved) {
-                // Save activity log only if preferences saved successfully
-                await saveActivityLog(action, amenityType, poiName);
-            }
+            await savePreferencesToFirebase();
         }
 
-        // Handle like (mock version)
-        function handleLike() {
-            console.log('🔵 handleLike called, USE_FIREBASE:', USE_FIREBASE);
-            
-            if (USE_FIREBASE) {
-                console.log('🔵 Calling handleLikeWithFirebase...');
-                handleLikeWithFirebase();
-                return;
-            }
-
-            if (!currentPOI) return;
-            const amenityType = currentPOI.amenity || currentPOI.type;
-            
-            if (!isLiked) {
-                isLiked = true;
-                likedPOIs.push(currentPOI);
-                userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-            } else {
-                isLiked = false;
-                likedPOIs = likedPOIs.filter(poi => poi.name !== currentPOI.name);
-                if (userPreferences[amenityType] > 0) {
-                    userPreferences[amenityType]--;
-                }
-            }
-            
-            const heartBtn = document.getElementById('heartBtn');
-            heartBtn.textContent = isLiked ? '♥' : '♡';
-            heartBtn.classList.toggle('liked', isLiked);
-            
-            console.log('User preferences:', userPreferences);
-        }
-
-        // Handle refresh button
         function handleRefresh() {
             const refreshBtn = document.getElementById('refreshBtn');
             refreshBtn.classList.add('spinning');
+            setTimeout(() => refreshBtn.classList.remove('spinning'), 600);
             
-            setTimeout(() => {
-                refreshBtn.classList.remove('spinning');
-            }, 600);
-            
-            if (USE_FIREBASE) {
+            if (currentUserUID && db) {
                 loadPOIWithFirebase();
             } else {
                 loadPOIMock();
             }
         }
 
-        // Initialize Firebase if enabled
-        async function initFirebase() {
-            if (!USE_FIREBASE) {
-                loadPOIMock();
-                return;
-            }
-
-            // Wait for Firebase modules to load
-            if (!window.firebaseLoaded) {
-                await new Promise(resolve => {
-                    window.addEventListener('firebaseready', resolve, { once: true });
-                });
-            }
-
+        async function init() {
             try {
-                const { initializeApp, getAuth, onAuthStateChanged, getFirestore } = window.firebaseModules;
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
                 
-                firebaseApp = initializeApp(firebaseConfig);
-                auth = getAuth(firebaseApp);
-                db = getFirestore(firebaseApp);
-                
-                console.log('✅ Firebase app initialized');
-                console.log('✅ Firestore initialized');
+                console.log('✅ Firebase initialized');
 
                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUserUID = user.uid;
-                        console.log('✅ User authenticated with UID:', currentUserUID);
-                        loadPOIWithFirebase();
-                    } else {
-                        onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    console.error('❌ USER NOT AUTHENTICATED — redirecting to sign in');
-    window.location.href = 'stroll-signin.html';
-    return;
-  }
-
-  currentUserUID = user.uid;
-  console.log('✅ User authenticated with UID:', currentUserUID);
-  loadPOIWithFirebase();
-});
+                    if (!user) {
+                        console.error('❌ No user authenticated');
+                        window.location.href = 'stroll-signin.html';
+                        return;
                     }
+
+                    currentUserUID = user.uid;
+                    console.log('✅ User authenticated:', currentUserUID);
+                    loadPOIWithFirebase();
                 });
             } catch (err) {
-                console.error('❌ Firebase initialization error:', err);
-                console.error('Falling back to mock data');
+                console.error('❌ Firebase error:', err);
                 loadPOIMock();
             }
         }
 
-        // Setup event listeners
         window.addEventListener('load', () => {
-            initFirebase();
+            init();
             
             document.getElementById('heartBtn').addEventListener('click', handleLike);
             document.getElementById('refreshBtn').addEventListener('click', handleRefresh);
