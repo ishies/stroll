@@ -483,17 +483,22 @@
                 
                 // If we don't have the document ID yet, query for it
                 if (!userDocId) {
+                    console.log('🔍 Querying for user document with uid:', currentUserUID);
                     const usersRef = collection(db, 'users');
                     const q = query(usersRef, where('uid', '==', currentUserUID));
                     const querySnapshot = await getDocs(q);
                     
+                    console.log('📊 Query returned', querySnapshot.size, 'documents');
+                    
                     if (querySnapshot.empty) {
                         console.error('❌ No user document found with uid:', currentUserUID);
+                        console.error('❌ Make sure the user document has a uid field matching:', currentUserUID);
                         return false;
                     }
                     
                     userDocId = querySnapshot.docs[0].id;
-                    console.log('📄 Found user document ID:', userDocId);
+                    console.log('✅✅ Found user document ID:', userDocId);
+                    console.log('📄 Document data:', querySnapshot.docs[0].data());
                 }
                 
                 // Now update using the document ID
