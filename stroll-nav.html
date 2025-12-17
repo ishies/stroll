@@ -146,21 +146,25 @@
             background: rgba(255, 215, 0, 0.5);
         }
 
-        .back-arrow {
+        .logout-btn {
             position: absolute;
             top: 30px;
-            left: 25px;
-            width: 35px;
-            height: 35px;
+            right: 25px;
+            padding: 8px 16px;
             background: rgba(255,255,255,0.3);
+            border: none;
             border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             color: white;
-            font-size: 18px;
+            font-size: 13px;
             cursor: pointer;
             z-index: 10;
+            transition: background 0.2s;
+            font-family: 'Clarendon', 'Georgia', serif;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.4);
         }
 
         .content {
@@ -297,27 +301,114 @@
             transform: scale(0.98);
         }
 
-        .path-line {
-            display: none;
-        }
-
-        .path-dot {
-            display: none;
-        }
-
-        .dot-start {
-            display: none;
-        }
-
-        .dot-end {
-            display: none;
+        .user-info {
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+            margin-bottom: 20px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <!-- Google Places API Script -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB59Zzd-0AvQP3xdJPGCr0InnRUAAf9Tew&libraries=places"></script>
+    <script>
+        // Google Places Autocomplete
+        let startingAutocomplete;
+        let destinationAutocomplete;
+
+        function initializeGooglePlaces() {
+            const startingInput = document.getElementById('starting-point');
+            const destinationInput = document.getElementById('destination');
+            const startingSuggestions = document.getElementById('starting-suggestions');
+            const destinationSuggestions = document.getElementById('destination-suggestions');
+
+            // Restrict results to specific bounds (NYC area)
+            const nycBounds = new google.maps.LatLngBounds(
+    new google.maps.LatLng(40.5795, -74.2591),
+    new google.maps.LatLng(40.9176, -73.7034)
+);
+
+            // Create autocomplete service
+            const service = new google.maps.places.AutocompleteService();
+
+            function handleInput(input, suggestionsList) {
+                input.addEventListener('input', async (e) => {
+                    const query = e.target.value.trim();
+                    suggestionsList.innerHTML = '';
+
+                    if (query.length < 2) {
+                        suggestionsList.classList.remove('active');
+                        return;
+                    }
+
+                    try {
+                        service.getPlacePredictions({
+                            input: query,
+                            bounds: nycBounds,
+                            componentRestrictions: { country: 'us' }
+                        }, (predictions, status) => {
+                            if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+                                suggestionsList.classList.remove('active');
+                                return;
+                            }
+
+                            predictions.forEach(prediction => {
+                                const li = document.createElement('li');
+                                li.className = 'autocomplete-item';
+                                li.textContent = prediction.description;
+                                li.addEventListener('click', () => {
+                                    input.value = prediction.description;
+                                    suggestionsList.classList.remove('active');
+                                    suggestionsList.innerHTML = '';
+                                });
+                                suggestionsList.appendChild(li);
+                            });
+
+                            suggestionsList.classList.add('active');
+                        });
+                    } catch (err) {
+                        console.error('Places API error:', err);
+                    }
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (e.target !== input && !suggestionsList.contains(e.target)) {
+                        suggestionsList.classList.remove('active');
+                    }
+                });
+            }
+
+            handleInput(startingInput, startingSuggestions);
+            handleInput(destinationInput, destinationSuggestions);
+
+            // Handle form submission
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const starting = startingInput.value.trim();
+                    const destination = destinationInput.value.trim();
+                    
+                    if (starting && destination) {
+                        console.log('Route:', { starting, destination });
+                        // Store route in sessionStorage for POI page to use
+                        sessionStorage.setItem('strollRoute', JSON.stringify({ starting, destination }));
+                        window.location.href = 'stroll-poi.html';
+                    }
+                });
+            }
+        }
+    </script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=YOUR_REAL_GOOGLE_PLACES_API_KEY&libraries=places&callback=initializeGooglePlaces"
+  async
+  defer>
+</script>
+
+    
     <div class="phone-container">
+        <button class="logout-btn" id="logoutBtn">Logout</button>
         
         <!-- Sky and background buildings -->
         <div class="sky-buildings">
@@ -352,6 +443,7 @@
         <div class="content">
             <h1>Enter Your Path</h1>
             <p class="subtitle">Plan your stroll</p>
+            <p class="user-info" id="userEmail">Loading...</p>
             
             <form style="width: 100%;">
                 <div class="form-group">
@@ -361,11 +453,6 @@
                         <span class="location-icon">📍</span>
                         <ul id="starting-suggestions" class="autocomplete-list"></ul>
                     </div>
-                </div>
-
-                <div class="path-line">
-                    <div class="path-dot dot-start"></div>
-                    <div class="path-dot dot-end"></div>
                 </div>
                 
                 <div class="form-group">
@@ -377,7 +464,7 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="button">Submit</button>
+                <button type="submit" class="button">Find POIs Along Route</button>
             </form>
         </div>
 
@@ -434,97 +521,44 @@
         </div>
     </div>
 
-    <script>
-        // Google Places Autocomplete
-        let startingAutocomplete;
-        let destinationAutocomplete;
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        function initializeGooglePlaces() {
-            const startingInput = document.getElementById('starting-point');
-            const destinationInput = document.getElementById('destination');
-            const startingSuggestions = document.getElementById('starting-suggestions');
-            const destinationSuggestions = document.getElementById('destination-suggestions');
+        const firebaseConfig = {
+            apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
+            authDomain: "stroll-c5285.firebaseapp.com",
+            projectId: "stroll-c5285",
+            storageBucket: "stroll-c5285.firebasestorage.app",
+            messagingSenderId: "465458957302",
+            appId: "1:465458957302:web:1b104b86069514164615d7",
+            measurementId: "G-PZY4GX7SSE"
+        };
 
-            // Restrict results to specific bounds (NYC area) - optional
-            const nycBounds = {
-                north: 40.9176,
-                south: 40.5795,
-                east: -73.7034,
-                west: -74.2591
-            };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-            // Create autocomplete service
-            const service = new google.maps.places.AutocompleteService();
-
-            function handleInput(input, suggestionsList) {
-                input.addEventListener('input', async (e) => {
-                    const query = e.target.value.trim();
-                    suggestionsList.innerHTML = '';
-
-                    if (query.length < 2) {
-                        suggestionsList.classList.remove('active');
-                        return;
-                    }
-
-                    try {
-                        const predictions = await service.getPlacePredictions({
-                            input: query,
-                            bounds: nycBounds,
-                            componentRestrictions: { country: 'us' }
-                        });
-
-                        if (predictions.predictions.length === 0) {
-                            suggestionsList.classList.remove('active');
-                            return;
-                        }
-
-                        predictions.predictions.forEach(prediction => {
-                            const li = document.createElement('li');
-                            li.className = 'autocomplete-item';
-                            li.textContent = prediction.description;
-                            li.addEventListener('click', () => {
-                                input.value = prediction.description;
-                                suggestionsList.classList.remove('active');
-                                suggestionsList.innerHTML = '';
-                            });
-                            suggestionsList.appendChild(li);
-                        });
-
-                        suggestionsList.classList.add('active');
-                    } catch (err) {
-                        console.error('Places API error:', err);
-                    }
-                });
-
-                // Hide suggestions when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (e.target !== input && !suggestionsList.contains(e.target)) {
-                        suggestionsList.classList.remove('active');
-                    }
-                });
+        // Check authentication state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log('✅ User authenticated:', user.email);
+                document.getElementById('userEmail').textContent = `Logged in as: ${user.email}`;
+            } else {
+                console.log('⚠️ No user authenticated, redirecting to signin');
+                window.location.href = 'stroll-signin.html';
             }
+        });
 
-            handleInput(startingInput, startingSuggestions);
-            handleInput(destinationInput, destinationSuggestions);
-
-            // Handle form submission
-            const form = document.querySelector('form');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const starting = startingInput.value.trim();
-                    const destination = destinationInput.value.trim();
-                    
-                    if (starting && destination) {
-                        console.log('Route:', { starting, destination });
-                        window.location.href = 'stroll-poi.html';
-                    }
-                });
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                console.log('✅ User signed out');
+                window.location.href = 'index.html';
+            } catch (err) {
+                console.error('❌ Sign out error:', err);
             }
-        }
-
-        // Initialize when Google Maps API is loaded
-        window.addEventListener('load', initializeGooglePlaces);
+        });
     </script>
 </body>
 </html>
