@@ -191,7 +191,7 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
@@ -239,15 +239,6 @@
 
           // Create user document in Firestore
           // Note: Cluster will be assigned after survey, so we set it to null initially
-          const usersRef = collection(db, 'users');
-          await addDoc(usersRef, {
-            uid: user.uid,
-            email: email,
-            Cluster: null,  // Will be assigned after survey
-            preferences: {},  // Empty preferences initially
-            CreatedAt: serverTimestamp()
-          });
-
           console.log('✅ User document created in Firestore');
 
           // Redirect to survey page to determine cluster
