@@ -437,11 +437,29 @@
                 const userData = userDoc.data();
                 const cluster = userData.Cluster;
                 
-                // Parse preferences - handle both string and number formats
-                const rawPrefs = userData.preferences || {};
+                // Parse preferences from Firebase (stored as map)
+                const rawPrefs = userData.preferences;
                 userPreferences = {};
-                for (const key in rawPrefs) {
-                    userPreferences[key] = parseInt(rawPrefs[key]) || 0;
+                
+                if (rawPrefs) {
+                    if (typeof rawPrefs === 'object' && !Array.isArray(rawPrefs)) {
+                        // It's a map object, convert to numbers
+                        for (const key in rawPrefs) {
+                            const value = rawPrefs[key];
+                            // Handle both string and number values
+                            userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
+                        }
+                        console.log('✅ Loaded preferences from Firestore map:', userPreferences);
+                    } else if (typeof rawPrefs === 'string') {
+                        // Legacy: It's a JSON string, parse it
+                        try {
+                            userPreferences = JSON.parse(rawPrefs);
+                            console.log('⚠️ Loaded preferences from legacy string format:', userPreferences);
+                        } catch (err) {
+                            console.error('❌ Error parsing preferences string:', err);
+                            userPreferences = {};
+                        }
+                    }
                 }
 
                 console.log('User cluster:', cluster);
@@ -653,11 +671,11 @@
                 console.log('💾 Starting to save preferences for:', user.email);
                 console.log('💾 Current preferences object:', userPreferences);
                 
-                // Convert preferences object to a single JSON string
-                const preferencesString = JSON.stringify(userPreferences);
-                console.log('💾 Preferences as JSON string:', preferencesString);
+                // Store preferences directly as the object - Firestore will handle it as a map
+                // This is actually the correct way - maps are more queryable than strings
+                console.log('💾 Saving preferences as Firestore map (this is correct)');
 
-                const { collection, query, where, getDocs, doc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                const { collection, query, where, getDocs, doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
                 
                 // Find user document by UID
                 const usersRef = collection(db, 'users');
@@ -671,25 +689,28 @@
 
                 console.log('📄 Found', snapshot.size, 'user document(s)');
 
-                // Update all matching documents
-                const batch = writeBatch(db);
-                snapshot.docs.forEach(docSnapshot => {
+                // Update each document - save preferences as map
+                for (const docSnapshot of snapshot.docs) {
                     console.log('📝 Updating document ID:', docSnapshot.id);
                     const docRef = doc(db, 'users', docSnapshot.id);
-                    batch.update(docRef, { 
-                        preferences: preferencesString  // Save as a single string
-                    });
-                });
+                    
+                    // Save directly as object - Firestore will store as map
+                    await setDoc(docRef, { 
+                        preferences: userPreferences  // This becomes a map in Firestore
+                    }, { merge: true });
+                    
+                    console.log('✅ Document updated:', docSnapshot.id);
+                }
 
-                await batch.commit();
-                console.log('✅✅✅ Preferences SAVED to Firebase as string!');
-                console.log('✅ Saved value:', preferencesString);
+                console.log('✅✅✅ Preferences SAVED to Firebase as map!');
+                console.log('✅ Saved data:', userPreferences);
                 return true;
                 
             } catch (err) {
                 console.error('❌❌❌ Error saving preferences:', err);
                 console.error('Error code:', err.code);
                 console.error('Error message:', err.message);
+                console.error('Full error:', err);
                 return false;
             }
         }
@@ -707,6 +728,7 @@
             const poiName = currentPOI.name || 'Unknown';
             
             console.log('🟢 Processing like for:', poiName, 'type:', amenityType);
+            console.log('📊 Preferences BEFORE:', JSON.stringify(userPreferences));
             
             let action;
             if (!isLiked) {
@@ -731,13 +753,15 @@
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
-            console.log('📊 Current preferences:', userPreferences);
+            console.log('📊 Preferences AFTER:', JSON.stringify(userPreferences));
 
             // Save to Firebase
-            await savePreferencesToFirebase();
+            const saved = await savePreferencesToFirebase();
             
-            // Save activity log
-            await saveActivityLog(action, amenityType, poiName);
+            if (saved) {
+                // Save activity log only if preferences saved successfully
+                await saveActivityLog(action, amenityType, poiName);
+            }
         }
 
         // Handle like (mock version)
