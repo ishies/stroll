@@ -622,9 +622,8 @@
                 
                 console.log('✅ Profile saved! Cluster:', cluster);
                 
-                setTimeout(() => {
-                    window.location.href = 'stroll-nav.html';
-                }, 500);
+                // Force redirect immediately
+                window.location.replace('stroll-nav.html');
                 
             } catch (err) {
                 console.error('❌ Error:', err);
