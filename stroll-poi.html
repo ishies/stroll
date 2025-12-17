@@ -609,8 +609,23 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    // Use name first, then fall back to address
-                    const searchQuery = currentPOI.name || currentPOI.address || '';
+                    // Combine name and address for more precise Google Maps search
+                    let searchQuery = '';
+                    
+                    if (currentPOI.name && currentPOI.address) {
+                        // If we have both, combine them for precision
+                        searchQuery = `${currentPOI.name}, ${currentPOI.address}`;
+                    } else if (currentPOI.name) {
+                        // Only name available
+                        searchQuery = currentPOI.name;
+                    } else if (currentPOI.address) {
+                        // Only address available
+                        searchQuery = currentPOI.address;
+                    } else {
+                        console.error('❌ No name or address available for POI');
+                        return;
+                    }
+                    
                     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
                     console.log('🗺️ Opening Google Maps for:', searchQuery);
                     window.open(mapsUrl, '_blank');
