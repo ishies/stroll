@@ -609,25 +609,35 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    // Combine name and address for more precise Google Maps search
-                    let searchQuery = '';
+                    let mapsUrl = '';
                     
-                    if (currentPOI.name && currentPOI.address) {
-                        // If we have both, combine them for precision
-                        searchQuery = `${currentPOI.name}, ${currentPOI.address}`;
-                    } else if (currentPOI.name) {
-                        // Only name available
-                        searchQuery = currentPOI.name;
-                    } else if (currentPOI.address) {
-                        // Only address available
-                        searchQuery = currentPOI.address;
+                    // Check if we have coordinates (lat/lon or latitude/longitude)
+                    const lat = currentPOI.lat || currentPOI.latitude;
+                    const lon = currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+                    
+                    if (lat && lon) {
+                        // Use coordinates for precise location
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+                        console.log('🗺️ Opening Google Maps with coordinates:', lat, lon);
                     } else {
-                        console.error('❌ No name or address available for POI');
-                        return;
+                        // Fall back to name + address search
+                        let searchQuery = '';
+                        
+                        if (currentPOI.name && currentPOI.address) {
+                            searchQuery = `${currentPOI.name}, ${currentPOI.address}`;
+                        } else if (currentPOI.name) {
+                            searchQuery = currentPOI.name;
+                        } else if (currentPOI.address) {
+                            searchQuery = currentPOI.address;
+                        } else {
+                            console.error('❌ No location data available for POI');
+                            return;
+                        }
+                        
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                        console.log('🗺️ Opening Google Maps for:', searchQuery);
                     }
                     
-                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                    console.log('🗺️ Opening Google Maps for:', searchQuery);
                     window.open(mapsUrl, '_blank');
                 }
             });
