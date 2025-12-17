@@ -277,6 +277,7 @@
         let map = null;
         let directionsService = null;
         let directionsRenderer = null;
+        let poiMarker = null;
 
         // Get route from sessionStorage
         const savedRoute = sessionStorage.getItem('strollRoute');
@@ -518,19 +519,31 @@
                 console.log('🔍 Total POIs returned:', poisSnap.docs.length);
 
                 if (poisSnap.empty) {
-                    console.warn('No POIs found for', amenityChoice);
+                    console.warn('❌ No POIs found for amenity:', amenityChoice);
                     
                     // Try to find ANY POI to debug
-                    console.log('🔍 Searching for ANY POI to debug...');
-                    const allPoisQ = query(poisRef, limit(5));
+                    console.log('🔍 Fetching sample POIs to understand database structure...');
+                    const allPoisQ = query(poisRef, limit(10));
                     const allPoisSnap = await getDocs(allPoisQ);
-                    console.log('📊 Sample POIs from database:');
-                    allPoisSnap.docs.forEach(d => {
+                    console.log('📊 Found', allPoisSnap.docs.length, 'sample POIs:');
+                    allPoisSnap.docs.forEach((d, idx) => {
                         const data = d.data();
-                        console.log('  -', data.name || 'Unnamed', '|', 
+                        console.log(`  ${idx + 1}.`, data.name || 'Unnamed', '|', 
                                    'amenity:', data.amenity, '|',
-                                   'Fields:', Object.keys(data).join(', '));
+                                   'type:', data.type, '|',
+                                   'coords: x=', data.x, 'y=', data.y);
+                        if (idx === 0) {
+                            console.log('     All fields:', Object.keys(data));
+                        }
                     });
+                    
+                    // Show what amenity values exist
+                    const amenitySet = new Set();
+                    allPoisSnap.docs.forEach(d => {
+                        const amenity = d.data().amenity;
+                        if (amenity) amenitySet.add(amenity);
+                    });
+                    console.log('📋 Sample amenity values in database:', Array.from(amenitySet));
                     
                     return;
                 }
@@ -599,6 +612,39 @@
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = '♡';
             heartBtn.classList.remove('liked');
+            
+            // Add POI marker to map
+            if (map && currentPOI) {
+                const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
+                const lng = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+                
+                if (lat && lng) {
+                    // Remove old marker if exists
+                    if (poiMarker) {
+                        poiMarker.setMap(null);
+                    }
+                    
+                    // Add new marker
+                    poiMarker = new google.maps.Marker({
+                        position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        map: map,
+                        title: currentPOI.name || 'POI',
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: '#8b5a3c',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 3
+                        }
+                    });
+                    
+                    // Center map on POI
+                    map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                    
+                    console.log('📍 Added POI marker at:', lat, lng);
+                }
+            }
         }
 
         async function savePreferencesToFirebase() {
@@ -731,5 +777,4 @@
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC9QL4PQdqupzoE-VPz0R-L6aKsknVZchY&libraries=places" async defer></script>
 </body>
-</html></body>
 </html>
