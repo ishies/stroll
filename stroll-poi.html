@@ -587,7 +587,7 @@
                 console.log('🔍 Query result - empty?:', poisSnap.empty);
                 console.log('🔍 Total POIs returned:', poisSnap.docs.length);
 
-                if (poisSnap.empty) {
+                if (poisSnap.empty || poisSnap.docs.length === 0) {
                     console.warn('❌ No POIs found for amenity:', amenityChoice);
                     
                     // Try to find ANY POI to debug
@@ -606,7 +606,7 @@
                         console.log(`  ${idx + 1}.`, data.name || 'Unnamed', '|', 
                                    'amenity:', data.amenity, '|',
                                    'type:', data.type, '|',
-                                   'coords: x=', data.x, 'y=', data.y);
+                                   'coords: X=', data.X, 'Y=', data.Y);
                         if (idx === 0) {
                             console.log('     All fields:', Object.keys(data));
                         }
@@ -642,14 +642,14 @@
                     routePOIs = poisSnap.docs.filter(d => {
                         const data = d.data();
                         
-                        // Try multiple possible coordinate field names
-                        const lat = data.y || data.lat || data.latitude || data.Latitude;
-                        const lng = data.x || data.lon || data.lng || data.longitude || data.Longitude;
+                        // Try multiple possible coordinate field names (including capital X, Y)
+                        const lat = data.Y || data.y || data.lat || data.latitude || data.Latitude;
+                        const lng = data.X || data.x || data.lon || data.lng || data.longitude || data.Longitude;
                         
                         console.log('📌 Checking POI:', data.name || 'Unnamed');
                         console.log('   Raw data fields:', Object.keys(data));
                         console.log('   Extracted coords: lat=', lat, 'lng=', lng);
-                        console.log('   y=', data.y, 'x=', data.x);
+                        console.log('   Y=', data.Y, 'X=', data.X);
                         
                         if (!lat || !lng) {
                             console.log('   ❌ Missing coordinates');
@@ -702,11 +702,12 @@
             
             // Add POI marker to map
             if (map && currentPOI) {
-                const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
-                const lng = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+                // Use capital X, Y from your database
+                const lat = currentPOI.Y || currentPOI.y || currentPOI.lat || currentPOI.latitude;
+                const lng = currentPOI.X || currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
                 
                 console.log('🗺️ Adding POI to map:', currentPOI.name);
-                console.log('   Coordinates:', lat, lng);
+                console.log('   Coordinates: lat=', lat, 'lng=', lng);
                 
                 if (lat && lng) {
                     // Remove old marker if exists
@@ -743,9 +744,10 @@
                     bounds.extend({ lat: parseFloat(lat), lng: parseFloat(lng) });
                     map.fitBounds(bounds);
                     
-                    console.log('✅ POI marker added at:', lat, lng);
+                    console.log('✅ POI marker added successfully at:', lat, lng);
                 } else {
                     console.warn('⚠️ No coordinates found for POI');
+                    console.warn('   Available fields:', Object.keys(currentPOI));
                 }
             }
         }
