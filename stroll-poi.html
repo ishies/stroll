@@ -445,7 +445,7 @@
                 }
 
                 console.log('User cluster:', cluster);
-                console.log('User preferences:', userPreferences);
+                console.log('User stored preferences:', userPreferences);
                 console.log('User document ID:', userDocId);
 
                 // Get cluster centroid
@@ -469,6 +469,22 @@
                     return;
                 }
 
+                // Initialize user preferences with cluster amenities if empty
+                if (Object.keys(userPreferences).length === 0) {
+                    console.log('🆕 Initializing preferences from cluster amenities');
+                    amenities.forEach(a => {
+                        // Start with normalized frequency (scale to 1-10 range)
+                        const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
+                        userPreferences[a.amenity] = normalizedFreq;
+                    });
+                    console.log('✅ Initial preferences set:', userPreferences);
+                    
+                    // Save initial preferences to Firebase
+                    await savePreferencesToFirebase();
+                }
+
+                console.log('📊 Final preferences for recommendations:', userPreferences);
+
                 // EXPLORATION: 20% chance to try a random amenity from cluster
                 const EXPLORATION_RATE = 0.20;
                 let amenityChoice;
@@ -479,14 +495,17 @@
                     amenityChoice = randomAmenity.amenity;
                     console.log('🔍 EXPLORING new amenity:', amenityChoice);
                 } else {
-                    // Exploit: weight amenities by user preferences
+                    // Exploit: Use ONLY user preferences for weighting
                     const weightedAmenities = amenities.map(a => ({
-                        ...a,
-                        frequency: a.frequency + (userPreferences[a.amenity] || 0) * 2
+                        amenity: a.amenity,
+                        // Use only user preferences (no cluster frequency)
+                        frequency: userPreferences[a.amenity] || 1 // Default to 1 if no preference yet
                     }));
+                    
                     const picked = weightedPick(weightedAmenities);
                     amenityChoice = picked.amenity;
-                    console.log('✅ Using preferred amenity:', amenityChoice);
+                    console.log('✅ Using user preference:', amenityChoice, 
+                               '(user pref:', userPreferences[amenityChoice] || 0, ')');
                 }
 
                 // Query POIs
@@ -622,6 +641,49 @@
             }
         }
 
+        // Save preferences to Firebase (helper function)
+        async function savePreferencesToFirebase() {
+            try {
+                if (!auth || !auth.currentUser || !db) {
+                    console.warn('⚠️ Cannot save preferences - missing auth or db');
+                    return;
+                }
+
+                const user = auth.currentUser;
+                
+                // Convert preferences to strings for Firestore
+                const preferencesForFirestore = {};
+                for (const key in userPreferences) {
+                    preferencesForFirestore[key] = String(userPreferences[key]);
+                }
+
+                const { collection, query, where, getDocs, doc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                // Find user document by UID
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('uid', '==', user.uid));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    console.error('❌ No user document found for UID:', user.uid);
+                    return;
+                }
+
+                // Update all matching documents
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(docSnapshot => {
+                    const docRef = doc(db, 'users', docSnapshot.id);
+                    batch.update(docRef, { preferences: preferencesForFirestore });
+                });
+
+                await batch.commit();
+                console.log('✅ Preferences saved to Firebase:', preferencesForFirestore);
+                
+            } catch (err) {
+                console.error('❌ Error saving preferences:', err);
+            }
+        }
+
         // Handle like with Firebase
         async function handleLikeWithFirebase() {
             console.log('🟢 handleLikeWithFirebase CALLED');
@@ -662,63 +724,10 @@
             console.log('📊 Current preferences:', userPreferences);
 
             // Save to Firebase
-            try {
-                if (!auth || !auth.currentUser) {
-                    console.error('❌ No authenticated user');
-                    return;
-                }
-                
-                if (!db) {
-                    console.error('❌ No Firestore database instance');
-                    return;
-                }
-
-                const user = auth.currentUser;
-                console.log('🔍 Saving for user:', user.email, 'UID:', user.uid);
-
-                // Convert preferences to strings for Firestore
-                const preferencesForFirestore = {};
-                for (const key in userPreferences) {
-                    preferencesForFirestore[key] = String(userPreferences[key]);
-                }
-                
-                console.log('📝 Preferences to save:', preferencesForFirestore);
-
-                const { collection, query, where, getDocs, doc, updateDoc, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                
-                // Find user document by UID
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, where('uid', '==', user.uid));
-                const snapshot = await getDocs(q);
-                
-                if (snapshot.empty) {
-                    console.error('❌ No user document found for UID:', user.uid);
-                    return;
-                }
-
-                console.log('📄 Found', snapshot.size, 'user document(s)');
-
-                // Update all matching documents (in case of duplicates)
-                const batch = writeBatch(db);
-                snapshot.docs.forEach(docSnapshot => {
-                    console.log('📝 Updating document:', docSnapshot.id);
-                    const docRef = doc(db, 'users', docSnapshot.id);
-                    batch.update(docRef, { preferences: preferencesForFirestore });
-                });
-
-                await batch.commit();
-                console.log('✅✅✅ Preferences saved to Firebase!');
-                console.log('   Saved data:', preferencesForFirestore);
-                
-                // Save activity log
-                await saveActivityLog(action, amenityType, poiName);
-                
-            } catch (err) {
-                console.error('❌❌❌ Error updating preferences:', err);
-                console.error('   - Error code:', err.code);
-                console.error('   - Error message:', err.message);
-                console.error('   - Stack:', err.stack);
-            }
+            await savePreferencesToFirebase();
+            
+            // Save activity log
+            await saveActivityLog(action, amenityType, poiName);
         }
 
         // Handle like (mock version)
