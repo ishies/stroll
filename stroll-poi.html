@@ -393,11 +393,15 @@
                 }
 
                 if (Object.keys(userPreferences).length === 0) {
-                    console.log('🆕 Initializing preferences');
+                    console.log('🆕 Initializing preferences from cluster amenities');
+                    
+                    // Initialize preferences directly from cluster amenity frequencies
                     amenities.forEach(a => {
-                        const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
-                        userPreferences[a.amenity] = normalizedFreq;
+                        // Use the actual frequency from the cluster data
+                        userPreferences[a.amenity] = a.frequency;
                     });
+                    
+                    console.log('✅ Initial preferences set from cluster:', userPreferences);
                     await savePreferencesToFirebase();
                 }
 
