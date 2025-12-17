@@ -393,27 +393,18 @@
                 }
 
                 if (Object.keys(userPreferences).length === 0) {
-                    console.log('🆕 Initializing preferences from cluster amenities');
-                    
-                    // Initialize preferences directly from cluster amenity frequencies
+                    console.log('🆕 Initializing preferences');
                     amenities.forEach(a => {
-                        // Use the actual frequency from the cluster data
-                        userPreferences[a.amenity] = a.frequency;
+                        const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
+                        userPreferences[a.amenity] = normalizedFreq;
                     });
-                    
-                    console.log('✅ Initial preferences set from cluster:', userPreferences);
                     await savePreferencesToFirebase();
                 }
 
-                // Get variability from localStorage (0-100)
-                const variability = parseInt(localStorage.getItem('strollVariability') || '20');
-                const explorationRate = variability / 100; // Convert to 0-1
-                
-                console.log('🎲 Using exploration rate:', explorationRate * 100 + '%');
-
+                const EXPLORATION_RATE = 0.20;
                 let amenityChoice;
                 
-                if (Math.random() < explorationRate) {
+                if (Math.random() < EXPLORATION_RATE) {
                     const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
                     amenityChoice = randomAmenity.amenity;
                     console.log('🔍 EXPLORING:', amenityChoice);
@@ -529,21 +520,9 @@
         }
 
         async function handleLike() {
-            if (!currentPOI) {
-                console.warn('⚠️ No current POI to like');
-                return;
-            }
+            if (!currentPOI) return;
 
             const amenityType = currentPOI.amenity || currentPOI.type;
-            
-            console.log('🎯 Current POI:', currentPOI.name);
-            console.log('🏷️ Amenity type being tracked:', amenityType);
-            console.log('📋 Full POI data:', currentPOI);
-            
-            if (!amenityType) {
-                console.error('❌ No amenity type found for this POI!');
-                return;
-            }
             
             if (!isLiked) {
                 isLiked = true;
@@ -557,14 +536,14 @@
                         delete userPreferences[amenityType];
                     }
                 }
-                console.log('💔 UNLIKED:', amenityType, '- New count:', userPreferences[amenityType] || 0);
+                console.log('💔 UNLIKED:', amenityType);
             }
 
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
-            console.log('📊 Current preferences:', JSON.stringify(userPreferences, null, 2));
+            console.log('📊 Current preferences:', userPreferences);
             
             await savePreferencesToFirebase();
         }
@@ -614,40 +593,8 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
-                    console.log('🔍 Full POI data:', currentPOI);
-                    
-                    let mapsUrl = '';
-                    
-                    // Check if we have coordinates (support multiple field names)
-                    // x = longitude, y = latitude (your database format)
-                    const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
-                    const lon = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
-                    
-                    console.log('🌍 Extracted coordinates - Latitude:', lat, 'Longitude:', lon);
-                    
-                    if (lat && lon) {
-                        // Use coordinates for precise location
-                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-                        console.log('✅ Using coordinates - Opening:', mapsUrl);
-                    } else {
-                        // Fall back to name + address search
-                        let searchQuery = '';
-                        
-                        if (currentPOI.name && currentPOI.address) {
-                            searchQuery = `${currentPOI.name}, ${currentPOI.address}`;
-                        } else if (currentPOI.name) {
-                            searchQuery = currentPOI.name;
-                        } else if (currentPOI.address) {
-                            searchQuery = currentPOI.address;
-                        } else {
-                            console.error('❌ No location data available for POI');
-                            return;
-                        }
-                        
-                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                        console.log('⚠️ No coordinates - using text search:', searchQuery);
-                    }
-                    
+                    const address = currentPOI.address || currentPOI.name || '';
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
                     window.open(mapsUrl, '_blank');
                 }
             });
