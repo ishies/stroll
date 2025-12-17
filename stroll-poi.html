@@ -611,9 +611,10 @@
                 if (currentPOI) {
                     let mapsUrl = '';
                     
-                    // Check if we have coordinates (lat/lon or latitude/longitude)
-                    const lat = currentPOI.lat || currentPOI.latitude;
-                    const lon = currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+                    // Check if we have coordinates (support multiple field names)
+                    // x = longitude, y = latitude (your database format)
+                    const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
+                    const lon = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
                     
                     if (lat && lon) {
                         // Use coordinates for precise location
