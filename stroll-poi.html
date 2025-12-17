@@ -351,22 +351,32 @@
             return Math.min(dist1, dist2);
         }
 
-        // Check if POI is along the route (within 500m of any route segment)
-        function isAlongRoute(poiLat, poiLng, maxDistance = 500) {
-            if (!routePolyline || routePolyline.length < 2) return false;
+        // Check if POI is along the route (within 800m of any route segment)
+        function isAlongRoute(poiLat, poiLng, maxDistance = 800) {
+            if (!routePolyline || routePolyline.length < 2) {
+                console.log('⚠️ No route polyline available');
+                return false;
+            }
             
             const poiPoint = { lat: poiLat, lng: poiLng };
+            let minDistance = Infinity;
             
             for (let i = 0; i < routePolyline.length - 1; i++) {
                 const segmentStart = routePolyline[i];
                 const segmentEnd = routePolyline[i + 1];
                 const distance = distanceToSegment(poiPoint, segmentStart, segmentEnd);
                 
+                if (distance < minDistance) {
+                    minDistance = distance;
+                }
+                
                 if (distance <= maxDistance) {
+                    console.log('   ✅ Within', Math.round(distance), 'm of route');
                     return true;
                 }
             }
             
+            console.log('   ❌ Closest point:', Math.round(minDistance), 'm away (max:', maxDistance, 'm)');
             return false;
         }
 
@@ -510,17 +520,28 @@
                 }
 
                 // Filter POIs to only those along the route
+                console.log('🔍 Total POIs before filtering:', poisSnap.docs.length);
+                
                 let routePOIs = poisSnap.docs.filter(d => {
                     const data = d.data();
                     const lat = data.y || data.lat || data.latitude;
                     const lng = data.x || data.lon || data.lng || data.longitude;
                     
-                    if (!lat || !lng) return false;
+                    console.log('📌 Checking POI:', data.name, '| Coords:', { lat, lng });
+                    console.log('   All fields:', Object.keys(data));
                     
-                    return isAlongRoute(lat, lng, 500); // Within 500m of route
+                    if (!lat || !lng) {
+                        console.log('   ❌ Missing coordinates');
+                        return false;
+                    }
+                    
+                    const isAlong = isAlongRoute(lat, lng, 800); // Increased to 800m
+                    console.log('   Result:', isAlong ? '✅ Along route' : '❌ Too far');
+                    
+                    return isAlong;
                 });
 
-                console.log('📍 Found', routePOIs.length, 'POIs along route');
+                console.log('📍 Found', routePOIs.length, 'POIs along route out of', poisSnap.docs.length, 'total');
 
                 if (routePOIs.length === 0) {
                     console.warn('No POIs along route, showing all available');
