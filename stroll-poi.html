@@ -627,6 +627,8 @@
                 console.log('🔍 Total POIs before filtering:', poisSnap.docs.length);
                 console.log('📍 Route has', routePolyline ? routePolyline.length : 0, 'points');
                 
+                let routePOIs;
+                
                 if (!routePolyline || routePolyline.length < 2) {
                     console.error('❌ Route polyline not loaded properly!');
                     // Don't filter by route if we don't have route data
@@ -637,7 +639,7 @@
                         lastPoint: routePolyline[routePolyline.length - 1]
                     });
                     
-                    let routePOIs = poisSnap.docs.filter(d => {
+                    routePOIs = poisSnap.docs.filter(d => {
                         const data = d.data();
                         
                         // Try multiple possible coordinate field names
