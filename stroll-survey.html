@@ -485,7 +485,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, getDocs, query, where, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
@@ -609,22 +609,21 @@
                 
                 console.log('🔍 Finding user document for UID:', currentUser.uid);
                 
-                // Find the existing user document by UID
                 // ✅ DIRECTLY reference the user document by UID
-const userDocRef = doc(db, 'users', currentUser.uid);
+                const userDocRef = doc(db, 'users', currentUser.uid);
 
-await updateDoc(userDocRef, {
-    Cluster: cluster,
-    Age: age,
-    Gender: genderMap[gender] || 0.5,
-    PriceRange: price,
-    Income: Math.min(income / 375, 1),
-    Ambiance: ambiance,
-    UpdatedAt: serverTimestamp()
-});
+                await updateDoc(userDocRef, {
+                    Cluster: cluster,
+                    Age: age,
+                    Gender: genderMap[gender] || 0.5,
+                    PriceRange: price,
+                    Income: Math.min(income / 375, 1),
+                    Ambiance: ambiance,
+                    UpdatedAt: serverTimestamp()
+                });
                 
                 console.log('✅ Profile updated! Cluster:', cluster);
-                console.log('✅ Document ID:', querySnapshot.docs[0].id);
+                console.log('✅ Document ID:', currentUser.uid);
                 
                 // Redirect to nav page
                 window.location.replace('stroll-nav.html');
