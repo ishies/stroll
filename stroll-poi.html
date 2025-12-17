@@ -336,6 +336,8 @@
         let userPreferences = {};
         let db = null;
         let auth = null;
+        let shownPOIs = []; // Track shown POIs to avoid repeats
+        let userDocId = null; // Store user document ID for updates
 
         // Parse amenities from cluster data
         function parseAmenities(raw) {
@@ -415,7 +417,7 @@
                     return;
                 }
 
-                // Get most recent profile
+                // Get most recent profile and store document ID
                 let userDoc = snap.docs[0];
                 if (snap.size > 1) {
                     userDoc = snap.docs.reduce((best, d) => {
@@ -425,12 +427,14 @@
                     }, snap.docs[0]);
                 }
 
+                userDocId = userDoc.id; // Store for later updates
                 const userData = userDoc.data();
                 const cluster = userData.Cluster;
                 userPreferences = userData.preferences || {};
 
                 console.log('User cluster:', cluster);
                 console.log('User preferences:', userPreferences);
+                console.log('User document ID:', userDocId);
 
                 // Get cluster centroid
                 const centroidsRef = collection(db, 'clusters');
@@ -453,8 +457,8 @@
                     return;
                 }
 
-                // EXPLORATION: 15% chance to try a random amenity from cluster
-                const EXPLORATION_RATE = 0.15;
+                // EXPLORATION: 20% chance to try a random amenity from cluster
+                const EXPLORATION_RATE = 0.20;
                 let amenityChoice;
                 
                 if (Math.random() < EXPLORATION_RATE) {
@@ -484,9 +488,32 @@
                     return;
                 }
 
-                const docs = poisSnap.docs;
-                const chosenDoc = docs[Math.floor(Math.random() * docs.length)];
-                currentPOI = chosenDoc.data();
+                // Filter out recently shown POIs
+                let availableDocs = poisSnap.docs.filter(doc => 
+                    !shownPOIs.includes(doc.id)
+                );
+
+                // If all POIs have been shown, reset the list
+                if (availableDocs.length === 0) {
+                    console.log('All POIs shown, resetting list');
+                    shownPOIs = [];
+                    availableDocs = poisSnap.docs;
+                }
+
+                // Pick a random POI from available ones
+                const chosenDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
+                currentPOI = {
+                    ...chosenDoc.data(),
+                    _id: chosenDoc.id
+                };
+
+                // Track this POI as shown
+                shownPOIs.push(chosenDoc.id);
+
+                // Keep only last 10 shown POIs to allow variety
+                if (shownPOIs.length > 10) {
+                    shownPOIs.shift();
+                }
 
                 updateUI();
 
@@ -498,17 +525,27 @@
 
         // Load POI with mock data
         function loadPOIMock() {
-            let availablePOIs = mockPOIs;
+            let availablePOIs = mockPOIs.filter(poi => 
+                !shownPOIs.includes(poi.name)
+            );
+
+            // If all POIs shown, reset
+            if (availablePOIs.length === 0) {
+                console.log('All mock POIs shown, resetting');
+                shownPOIs = [];
+                availablePOIs = mockPOIs;
+            }
             
-            // EXPLORATION: 15% chance to show random POI regardless of preferences
-            const EXPLORATION_RATE = 0.15;
+            // EXPLORATION: 20% chance to show random POI regardless of preferences
+            const EXPLORATION_RATE = 0.20;
             
             if (Math.random() < EXPLORATION_RATE) {
                 // Explore: show any random POI
-                currentPOI = mockPOIs[Math.floor(Math.random() * mockPOIs.length)];
+                currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
                 console.log('🔍 EXPLORING new type:', currentPOI.type);
             } else {
                 // Exploit: if user has preferences, weight by them
+                let filteredPOIs = availablePOIs;
                 if (Object.keys(userPreferences).length > 0) {
                     const preferredTypes = Object.keys(userPreferences)
                         .filter(k => userPreferences[k] > 0)
@@ -516,17 +553,23 @@
                     
                     if (preferredTypes.length > 0) {
                         const topType = preferredTypes[0];
-                        const similarPOIs = mockPOIs.filter(poi => 
+                        const similarPOIs = availablePOIs.filter(poi => 
                             poi.type === topType || poi.amenity === topType
                         );
                         if (similarPOIs.length > 0) {
-                            availablePOIs = similarPOIs;
+                            filteredPOIs = similarPOIs;
                         }
                     }
                 }
                 
-                currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
+                currentPOI = filteredPOIs[Math.floor(Math.random() * filteredPOIs.length)];
                 console.log('✅ Using preferred type:', currentPOI.type);
+            }
+
+            // Track shown POI
+            shownPOIs.push(currentPOI.name);
+            if (shownPOIs.length > 5) {
+                shownPOIs.shift();
             }
             
             updateUI();
@@ -552,28 +595,7 @@
             if (!isLiked) {
                 isLiked = true;
                 userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-                
-                // Save to Firebase
-                try {
-                    const user = auth.currentUser;
-                    if (user && db) {
-                        const { collection, query, where, getDocs, updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                        
-                        const usersRef = collection(db, 'users');
-                        const q = query(usersRef, where('uid', '==', user.uid));
-                        const snap = await getDocs(q);
-                        
-                        if (!snap.empty) {
-                            const userDocRef = doc(db, 'users', snap.docs[0].id);
-                            await updateDoc(userDocRef, {
-                                preferences: userPreferences
-                            });
-                            console.log('✅ Preferences saved to Firebase:', userPreferences);
-                        }
-                    }
-                } catch (err) {
-                    console.error('❌ Error updating preferences:', err);
-                }
+                console.log('❤️ Liked:', amenityType, '- New count:', userPreferences[amenityType]);
             } else {
                 isLiked = false;
                 if (userPreferences[amenityType] > 0) {
@@ -582,35 +604,38 @@
                         delete userPreferences[amenityType];
                     }
                 }
-                
-                // Save to Firebase
-                try {
-                    const user = auth.currentUser;
-                    if (user && db) {
-                        const { collection, query, where, getDocs, updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                        
-                        const usersRef = collection(db, 'users');
-                        const q = query(usersRef, where('uid', '==', user.uid));
-                        const snap = await getDocs(q);
-                        
-                        if (!snap.empty) {
-                            const userDocRef = doc(db, 'users', snap.docs[0].id);
-                            await updateDoc(userDocRef, {
-                                preferences: userPreferences
-                            });
-                            console.log('✅ Preferences updated in Firebase:', userPreferences);
-                        }
-                    }
-                } catch (err) {
-                    console.error('❌ Error updating preferences:', err);
-                }
+                console.log('💔 Unliked:', amenityType);
             }
 
+            // Update UI immediately
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
             console.log('Current preferences:', userPreferences);
+
+            // Save to Firebase using stored document ID
+            try {
+                const user = auth.currentUser;
+                if (user && db && userDocId) {
+                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                    
+                    const userDocRef = doc(db, 'users', userDocId);
+                    await updateDoc(userDocRef, {
+                        preferences: userPreferences
+                    });
+                    console.log('✅ Preferences saved to Firebase:', userPreferences);
+                } else {
+                    console.warn('⚠️ Cannot save - missing:', {
+                        user: !!user,
+                        db: !!db,
+                        userDocId: !!userDocId
+                    });
+                }
+            } catch (err) {
+                console.error('❌ Error updating preferences:', err);
+                console.error('Error details:', err.message);
+            }
         }
 
         // Handle like (mock version)
@@ -702,9 +727,6 @@
                 }
             });
         });
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
