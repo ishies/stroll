@@ -205,13 +205,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        .route-info {
-            color: rgba(255,255,255,0.9);
-            font-size: 12px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -235,14 +228,32 @@
         </div>
         
         <div class="content">
-            <div class="map-container" id="map"></div>
+            <div class="map-container">
+                <svg class="map-image" viewBox="0 0 270 280" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="270" height="280" fill="#e8f5e9"/>
+                    <line x1="0" y1="140" x2="270" y2="140" stroke="#cbd5e0" stroke-width="8"/>
+                    <line x1="135" y1="0" x2="135" y2="280" stroke="#cbd5e0" stroke-width="8"/>
+                    <rect x="20" y="20" width="80" height="80" fill="#81c784" rx="8"/>
+                    <rect x="170" y="170" width="80" height="80" fill="#81c784" rx="8"/>
+                    <rect x="150" y="30" width="40" height="50" fill="#a0aec0" rx="4"/>
+                    <rect x="200" y="40" width="35" height="60" fill="#a0aec0" rx="4"/>
+                    <rect x="30" y="160" width="50" height="45" fill="#a0aec0" rx="4"/>
+                    <rect x="90" y="175" width="30" height="55" fill="#a0aec0" rx="4"/>
+                    <circle cx="135" cy="140" r="20" fill="#4a9b63" opacity="0.3"/>
+                    <circle cx="135" cy="140" r="10" fill="#4a9b63"/>
+                    <circle cx="135" cy="140" r="5" fill="white"/>
+                    <g transform="translate(180, 90)">
+                        <path d="M 0 -20 Q -8 -20, -8 -12 L -8 12 Q -8 20, 0 20 Q 8 20, 8 12 L 8 -12 Q 8 -20, 0 -20 Z" fill="#8b5a3c"/>
+                        <circle cx="0" cy="25" r="3" fill="#8b5a3c"/>
+                    </g>
+                </svg>
+            </div>
             
-            <p class="route-info" id="routeInfo">Loading route...</p>
-            <h1>POI Along Route</h1>
+            <h1>Nearby POI</h1>
             
             <div class="poi-box">
-                <div class="poi-name" id="poiName">Finding POI...</div>
-                <div class="poi-distance" id="poiAddress">Please wait</div>
+                <div class="poi-name">Blue Bottle Coffee</div>
+                <div class="poi-distance">450 W 15th St, New York, NY 10011</div>
             </div>
             
             <button class="button" id="detailsBtn">See Details</button>
@@ -252,7 +263,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-        import { getFirestore, collection, getDocs, query, where, limit, doc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, limit, doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
@@ -264,6 +275,16 @@
             measurementId: "G-PZY4GX7SSE"
         };
 
+        const mockPOIs = [
+            { name: "Blue Bottle Coffee", address: "450 W 15th St, New York, NY 10011", type: "coffee_shop", amenity: "cafe" },
+            { name: "Stumptown Coffee Roasters", address: "30 W 8th St, New York, NY 10011", type: "coffee_shop", amenity: "cafe" },
+            { name: "The High Line", address: "New York, NY 10011", type: "park", amenity: "park" },
+            { name: "Chelsea Market", address: "75 9th Ave, New York, NY 10011", type: "market", amenity: "marketplace" },
+            { name: "Joe's Pizza", address: "7 Carmine St, New York, NY 10014", type: "restaurant", amenity: "restaurant" },
+            { name: "Washington Square Park", address: "Washington Square, New York, NY 10012", type: "park", amenity: "park" },
+            { name: "Strand Bookstore", address: "828 Broadway, New York, NY 10003", type: "bookstore", amenity: "bookstore" }
+        ];
+
         let currentPOI = null;
         let isLiked = false;
         let userPreferences = {};
@@ -271,18 +292,8 @@
         let auth = null;
         let shownPOIs = [];
         let currentUserUID = null;
-        let userDocId = null;
-        let routePolyline = null;
-        let routeData = null;
-        let map = null;
-        let directionsService = null;
-        let poiMarker = null;
-        let startMarker = null;
-        let endMarker = null;
-
-        // Get route from sessionStorage
-        const savedRoute = sessionStorage.getItem('strollRoute');
-        const routeInfo = savedRoute ? JSON.parse(savedRoute) : null;
+        let app = null;
+        let userDocId = null; // Store the actual Firestore document ID
 
         function parseAmenities(raw) {
             if (!raw) return [];
@@ -320,211 +331,45 @@
             return items[items.length - 1];
         }
 
-        // Calculate distance from point to line segment (in meters)
-        function distanceToSegment(point, segmentStart, segmentEnd) {
-            const R = 6371000; // Earth radius in meters
-            
-            // Convert to radians
-            const lat1 = point.lat * Math.PI / 180;
-            const lng1 = point.lng * Math.PI / 180;
-            const lat2 = segmentStart.lat * Math.PI / 180;
-            const lng2 = segmentStart.lng * Math.PI / 180;
-            const lat3 = segmentEnd.lat * Math.PI / 180;
-            const lng3 = segmentEnd.lng * Math.PI / 180;
-            
-            // Haversine distance from point to segment start
-            const dLat1 = lat1 - lat2;
-            const dLng1 = lng1 - lng2;
-            const a1 = Math.sin(dLat1/2) * Math.sin(dLat1/2) +
-                      Math.cos(lat2) * Math.cos(lat1) *
-                      Math.sin(dLng1/2) * Math.sin(dLng1/2);
-            const c1 = 2 * Math.atan2(Math.sqrt(a1), Math.sqrt(1-a1));
-            const dist1 = R * c1;
-            
-            // Haversine distance from point to segment end
-            const dLat2 = lat1 - lat3;
-            const dLng2 = lng1 - lng3;
-            const a2 = Math.sin(dLat2/2) * Math.sin(dLat2/2) +
-                      Math.cos(lat3) * Math.cos(lat1) *
-                      Math.sin(dLng2/2) * Math.sin(dLng2/2);
-            const c2 = 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1-a2));
-            const dist2 = R * c2;
-            
-            return Math.min(dist1, dist2);
-        }
-
-        // Check if POI is along the route (within 1000m of any route segment)
-        function isAlongRoute(poiLat, poiLng, maxDistance = 1000) {
-            if (!routePolyline || routePolyline.length < 2) {
-                console.log('⚠️ No route polyline available');
-                return false;
-            }
-            
-            const poiPoint = { lat: poiLat, lng: poiLng };
-            let minDistance = Infinity;
-            
-            for (let i = 0; i < routePolyline.length - 1; i++) {
-                const segmentStart = routePolyline[i];
-                const segmentEnd = routePolyline[i + 1];
-                const distance = distanceToSegment(poiPoint, segmentStart, segmentEnd);
-                
-                if (distance < minDistance) {
-                    minDistance = distance;
-                }
-                
-                if (distance <= maxDistance) {
-                    console.log('   ✅ Within', Math.round(distance), 'm of route');
-                    return true;
-                }
-            }
-            
-            console.log('   ❌ Closest point:', Math.round(minDistance), 'm away (max:', maxDistance, 'm)');
-            return false;
-        }
-
-        async function getRouteFromGoogle() {
-            if (!routeInfo) {
-                console.warn('No route info found');
-                return false;
-            }
-
-            try {
-                const request = {
-                    origin: routeInfo.starting,
-                    destination: routeInfo.destination,
-                    travelMode: google.maps.TravelMode.WALKING
-                };
-
-                const result = await new Promise((resolve, reject) => {
-                    directionsService.route(request, (result, status) => {
-                        if (status === 'OK') {
-                            resolve(result);
-                        } else {
-                            reject(new Error('Directions request failed: ' + status));
-                        }
-                    });
-                });
-
-                // Don't use directionsRenderer (it adds its own markers)
-                // Instead, manually draw the route
-                const route = result.routes[0];
-                routeData = result;
-                
-                // Extract polyline points from the route
-                routePolyline = [];
-                route.overview_path.forEach(point => {
-                    routePolyline.push({
-                        lat: point.lat(),
-                        lng: point.lng()
-                    });
-                });
-
-                // Draw the route path
-                const routePath = new google.maps.Polyline({
-                    path: routePolyline,
-                    geodesic: true,
-                    strokeColor: '#4A90E2',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 4,
-                    map: map
-                });
-
-                // Add custom start marker (green)
-                const leg = route.legs[0];
-                startMarker = new google.maps.Marker({
-                    position: leg.start_location,
-                    map: map,
-                    title: 'Start: ' + routeInfo.starting,
-                    label: {
-                        text: 'A',
-                        color: 'white',
-                        fontWeight: 'bold'
-                    },
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 12,
-                        fillColor: '#4CAF50',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 3
-                    }
-                });
-
-                // Add custom end marker (red)
-                endMarker = new google.maps.Marker({
-                    position: leg.end_location,
-                    map: map,
-                    title: 'End: ' + routeInfo.destination,
-                    label: {
-                        text: 'B',
-                        color: 'white',
-                        fontWeight: 'bold'
-                    },
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 12,
-                        fillColor: '#F44336',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 3
-                    }
-                });
-
-                // Update route info display
-                document.getElementById('routeInfo').textContent = 
-                    `${leg.distance.text} • ${leg.duration.text}`;
-
-                // Fit map to show entire route
-                const bounds = new google.maps.LatLngBounds();
-                routePolyline.forEach(point => bounds.extend(point));
-                map.fitBounds(bounds);
-
-                console.log('✅ Route loaded:', routePolyline.length, 'points');
-                console.log('📍 Start:', leg.start_location.lat(), leg.start_location.lng());
-                console.log('📍 End:', leg.end_location.lat(), leg.end_location.lng());
-                
-                return true;
-            } catch (err) {
-                console.error('❌ Error getting route:', err);
-                document.getElementById('routeInfo').textContent = 'Route unavailable';
-                return false;
-            }
-        }
-
         async function loadPOIWithFirebase() {
             try {
                 if (!currentUserUID) {
                     console.warn('No user UID available');
+                    loadPOIMock();
                     return;
                 }
 
+                // Query to find user document by uid field
                 const usersRef = collection(db, 'users');
                 const q = query(usersRef, where('uid', '==', currentUserUID));
                 const userQuerySnap = await getDocs(q);
 
                 if (userQuerySnap.empty) {
-                    console.warn('No user profile found');
+                    console.warn('No user profile found for UID:', currentUserUID);
+                    loadPOIMock();
                     return;
                 }
 
+                // Get the first matching document and store its ID
                 const userDoc = userQuerySnap.docs[0];
-                userDocId = userDoc.id;
+                userDocId = userDoc.id; // Store for later updates
                 const userData = userDoc.data();
                 const cluster = userData.Cluster;
                 
-                console.log('✅ User cluster:', cluster);
+                console.log('✅ Found user document ID:', userDocId);
+                console.log('User cluster:', cluster);
 
                 const rawPrefs = userData.preferences;
                 userPreferences = {};
                 
-                if (rawPrefs && typeof rawPrefs === 'object') {
-                    for (const key in rawPrefs) {
-                        userPreferences[key] = typeof rawPrefs[key] === 'number' ? 
-                            rawPrefs[key] : parseInt(rawPrefs[key]) || 0;
+                if (rawPrefs) {
+                    if (typeof rawPrefs === 'object' && !Array.isArray(rawPrefs)) {
+                        for (const key in rawPrefs) {
+                            const value = rawPrefs[key];
+                            userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
+                        }
+                        console.log('✅ Loaded preferences:', userPreferences);
                     }
-                    console.log('📊 Current user preferences:', userPreferences);
-                } else {
-                    console.log('⚠️ No existing preferences found');
                 }
 
                 const centroidsRef = collection(db, 'clusters');
@@ -533,146 +378,69 @@
 
                 if (centSnap.empty) {
                     console.warn('No centroid found');
+                    loadPOIMock();
                     return;
                 }
 
                 const centroid = centSnap.docs[0].data();
-                const amenities = parseAmenities(centroid.amenities || centroid.Amenities);
+                const rawAmenities = centroid.amenities || centroid.Amenities;
+                const amenities = parseAmenities(rawAmenities);
 
                 if (!amenities || amenities.length === 0) {
                     console.warn('No amenities in centroid');
+                    loadPOIMock();
                     return;
                 }
 
                 if (Object.keys(userPreferences).length === 0) {
                     console.log('🆕 Initializing preferences from cluster amenities');
+                    
+                    // Initialize preferences directly from cluster amenity frequencies
                     amenities.forEach(a => {
+                        // Use the actual frequency from the cluster data
                         userPreferences[a.amenity] = a.frequency;
                     });
-                    console.log('✅ Initial preferences set:', userPreferences);
+                    
+                    console.log('✅ Initial preferences set from cluster:', userPreferences);
                     await savePreferencesToFirebase();
-                } else {
-                    console.log('✅ Using existing preferences');
                 }
 
-                // Get variability from localStorage
+                // Get variability from localStorage (0-100)
                 const variability = parseInt(localStorage.getItem('strollVariability') || '20');
-                const explorationRate = variability / 100;
+                const explorationRate = variability / 100; // Convert to 0-1
                 
-                console.log('🎲 Exploration rate:', explorationRate * 100 + '%');
+                console.log('🎲 Using exploration rate:', explorationRate * 100 + '%');
 
                 let amenityChoice;
                 
                 if (Math.random() < explorationRate) {
                     const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
                     amenityChoice = randomAmenity.amenity;
-                    console.log('🔍 EXPLORING (random choice):', amenityChoice);
+                    console.log('🔍 EXPLORING:', amenityChoice);
                 } else {
                     const weightedAmenities = amenities.map(a => ({
                         amenity: a.amenity,
                         frequency: userPreferences[a.amenity] || 1
                     }));
-                    console.log('🎯 Weighted options:', weightedAmenities);
                     const picked = weightedPick(weightedAmenities);
                     amenityChoice = picked.amenity;
-                    console.log('✅ Using preference-based choice:', amenityChoice, '(weight:', picked.frequency, ')');
+                    console.log('✅ Using preference:', amenityChoice);
                 }
 
                 const poisRef = collection(db, 'pois');
                 const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
                 const poisSnap = await getDocs(poisQ);
 
-                console.log('🔍 Querying POIs with amenity:', amenityChoice);
-                console.log('🔍 Total POIs returned:', poisSnap.docs.length);
-
-                if (poisSnap.empty || poisSnap.docs.length === 0) {
-                    console.warn('❌ No POIs found for amenity:', amenityChoice);
-                    
-                    // Try to find ANY POI to debug
-                    console.log('🔍 Fetching sample POIs to understand database structure...');
-                    const allPoisQ = query(poisRef, limit(10));
-                    const allPoisSnap = await getDocs(allPoisQ);
-                    console.log('📊 Sample query returned:', allPoisSnap.docs.length, 'POIs');
-                    
-                    if (allPoisSnap.empty) {
-                        console.error('❌❌❌ Your POIs collection appears to be EMPTY!');
-                        return;
-                    }
-                    
-                    allPoisSnap.docs.forEach((d, idx) => {
-                        const data = d.data();
-                        console.log(`  ${idx + 1}.`, data.name || 'Unnamed', '|', 
-                                   'amenity:', data.amenity, '|',
-                                   'type:', data.type, '|',
-                                   'coords: X=', data.X, 'Y=', data.Y);
-                        if (idx === 0) {
-                            console.log('     All fields:', Object.keys(data));
-                        }
-                    });
-                    
-                    // Show what amenity values exist
-                    const amenitySet = new Set();
-                    allPoisSnap.docs.forEach(d => {
-                        const amenity = d.data().amenity;
-                        if (amenity) amenitySet.add(amenity);
-                    });
-                    console.log('📋 Sample amenity values in database:', Array.from(amenitySet));
-                    
+                if (poisSnap.empty) {
+                    console.warn('No POIs found for', amenityChoice);
+                    loadPOIMock();
                     return;
                 }
 
-                // Filter POIs to only those along the route
-                console.log('🔍 Total POIs before filtering:', poisSnap.docs.length);
-                console.log('📍 Route has', routePolyline ? routePolyline.length : 0, 'points');
-                
-                let routePOIs = [];
-                
-                if (!routePolyline || routePolyline.length < 2) {
-                    console.error('❌ Route polyline not loaded properly!');
-                    // Don't filter by route if we don't have route data
-                    routePOIs = poisSnap.docs;
-                } else {
-                    console.log('📍 Route bounds:', {
-                        firstPoint: routePolyline[0],
-                        lastPoint: routePolyline[routePolyline.length - 1]
-                    });
-                    
-                    routePOIs = poisSnap.docs.filter(d => {
-                        const data = d.data();
-                        
-                        // Try multiple possible coordinate field names (including capital X, Y)
-                        const lat = data.Y || data.y || data.lat || data.latitude || data.Latitude;
-                        const lng = data.X || data.x || data.lon || data.lng || data.longitude || data.Longitude;
-                        
-                        console.log('📌 Checking POI:', data.name || 'Unnamed');
-                        console.log('   Raw data fields:', Object.keys(data));
-                        console.log('   Extracted coords: lat=', lat, 'lng=', lng);
-                        console.log('   Y=', data.Y, 'X=', data.X);
-                        
-                        if (!lat || !lng) {
-                            console.log('   ❌ Missing coordinates');
-                            return false;
-                        }
-                        
-                        const isAlong = isAlongRoute(lat, lng, 1000); // Increased to 1km
-                        
-                        return isAlong;
-                    });
-                }
-
-                console.log('📍 Found', routePOIs.length, 'POIs along route out of', poisSnap.docs.length, 'total');
-
-                if (routePOIs.length === 0) {
-                    console.warn('⚠️ No POIs along route, using all available POIs');
-                    routePOIs = poisSnap.docs;
-                }
-
-                // Filter out already shown POIs
-                let availableDocs = routePOIs.filter(d => !shownPOIs.includes(d.id));
+                let availableDocs = poisSnap.docs.filter(d => !shownPOIs.includes(d.id));
                 if (availableDocs.length === 0) {
-                    console.log('🔄 All POIs have been shown, resetting...');
                     shownPOIs = [];
-                    availableDocs = routePOIs;
+                    availableDocs = poisSnap.docs;
                 }
 
                 const chosenDoc = availableDocs[Math.floor(Math.random() * availableDocs.length)];
@@ -680,65 +448,210 @@
                 shownPOIs.push(chosenDoc.id);
                 if (shownPOIs.length > 10) shownPOIs.shift();
 
-                console.log('✅ Selected POI:', currentPOI.name);
-                console.log('📦 POI full data:', currentPOI);
-
                 updateUI();
 
             } catch (err) {
-                console.error('❌ Firebase error:', err);
-                console.error('Error stack:', err.stack);
+                console.error('Firebase error:', err);
+                loadPOIMock();
             }
         }
 
+        function loadPOIMock() {
+            let availablePOIs = mockPOIs.filter(poi => !shownPOIs.includes(poi.name));
+            if (availablePOIs.length === 0) {
+                shownPOIs = [];
+                availablePOIs = mockPOIs;
+            }
+            
+            currentPOI = availablePOIs[Math.floor(Math.random() * availablePOIs.length)];
+            shownPOIs.push(currentPOI.name);
+            if (shownPOIs.length > 5) shownPOIs.shift();
+            
+            updateUI();
+        }
+
         function updateUI() {
-            document.getElementById('poiName').textContent = currentPOI.name || 'Recommended Place';
-            document.getElementById('poiAddress').textContent = currentPOI.address || '';
+            document.querySelector('.poi-name').textContent = currentPOI.name || 'Recommended Place';
+            document.querySelector('.poi-distance').textContent = currentPOI.address || '';
             
             isLiked = false;
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = '♡';
             heartBtn.classList.remove('liked');
-            
-            // Add POI marker to map
-            if (map && currentPOI) {
-                // Use capital X, Y from your database
-                const lat = currentPOI.Y || currentPOI.y || currentPOI.lat || currentPOI.latitude;
-                const lng = currentPOI.X || currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+        }
+
+        async function savePreferencesToFirebase() {
+            try {
+                if (!currentUserUID || !db) {
+                    console.warn('⚠️ Cannot save - missing UID or db');
+                    return false;
+                }
                 
-                console.log('🗺️ Adding POI to map:', currentPOI.name);
-                console.log('   Coordinates: lat=', lat, 'lng=', lng);
+                console.log('💾 Saving preferences for UID:', currentUserUID);
+                console.log('💾 Preferences:', userPreferences);
                 
-                if (lat && lng) {
-                    // Remove old marker if exists
-                    if (poiMarker) {
-                        poiMarker.setMap(null);
+                // If we don't have the document ID yet, query for it
+                if (!userDocId) {
+                    console.log('🔍 Querying for user document with uid:', currentUserUID);
+                    const usersRef = collection(db, 'users');
+                    const q = query(usersRef, where('uid', '==', currentUserUID));
+                    const querySnapshot = await getDocs(q);
+                    
+                    console.log('📊 Query returned', querySnapshot.size, 'documents');
+                    
+                    if (querySnapshot.empty) {
+                        console.error('❌ No user document found with uid:', currentUserUID);
+                        console.error('❌ Make sure the user document has a uid field matching:', currentUserUID);
+                        return false;
                     }
                     
-                    // Add new POI marker (brown/coffee color)
-                    poiMarker = new google.maps.Marker({
-                        position: { lat: parseFloat(lat), lng: parseFloat(lng) },
-                        map: map,
-                        title: currentPOI.name || 'POI',
-                        label: {
-                            text: '★',
-                            color: 'white',
-                            fontSize: '18px',
-                            fontWeight: 'bold'
-                        },
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 15,
-                            fillColor: '#8b5a3c',
-                            fillOpacity: 1,
-                            strokeColor: '#ffffff',
-                            strokeWeight: 3
-                        },
-                        zIndex: 1000
-                    });
+                    userDocId = querySnapshot.docs[0].id;
+                    console.log('✅✅ Found user document ID:', userDocId);
+                    console.log('📄 Document data:', querySnapshot.docs[0].data());
+                }
+                
+                // Now update using the document ID
+                const userRef = doc(db, 'users', userDocId);
+                
+                await updateDoc(userRef, { 
+                    preferences: userPreferences,
+                    UpdatedAt: serverTimestamp()
+                });
+                
+                console.log('✅✅✅ Preferences saved successfully to document:', userDocId);
+                return true;
+            } catch (err) {
+                console.error('❌ Error saving preferences:', err);
+                console.error('Error code:', err.code);
+                console.error('Error message:', err.message);
+                return false;
+            }
+        }
+
+        async function handleLike() {
+            if (!currentPOI) {
+                console.warn('⚠️ No current POI to like');
+                return;
+            }
+
+            const amenityType = currentPOI.amenity || currentPOI.type;
+            
+            console.log('🎯 Current POI:', currentPOI.name);
+            console.log('🏷️ Amenity type being tracked:', amenityType);
+            console.log('📋 Full POI data:', currentPOI);
+            
+            if (!amenityType) {
+                console.error('❌ No amenity type found for this POI!');
+                return;
+            }
+            
+            if (!isLiked) {
+                isLiked = true;
+                userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
+                console.log('❤️ LIKED:', amenityType, '- New count:', userPreferences[amenityType]);
+            } else {
+                isLiked = false;
+                if (userPreferences[amenityType] > 0) {
+                    userPreferences[amenityType]--;
+                    if (userPreferences[amenityType] === 0) {
+                        delete userPreferences[amenityType];
+                    }
+                }
+                console.log('💔 UNLIKED:', amenityType, '- New count:', userPreferences[amenityType] || 0);
+            }
+
+            const heartBtn = document.getElementById('heartBtn');
+            heartBtn.textContent = isLiked ? '♥' : '♡';
+            heartBtn.classList.toggle('liked', isLiked);
+            
+            console.log('📊 Current preferences:', JSON.stringify(userPreferences, null, 2));
+            
+            await savePreferencesToFirebase();
+        }
+
+        function handleRefresh() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.classList.add('spinning');
+            setTimeout(() => refreshBtn.classList.remove('spinning'), 600);
+            
+            if (currentUserUID && db) {
+                loadPOIWithFirebase();
+            } else {
+                loadPOIMock();
+            }
+        }
+
+        async function init() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                console.log('✅ Firebase initialized');
+
+                onAuthStateChanged(auth, (user) => {
+                    if (!user) {
+                        console.error('❌ No user authenticated');
+                        window.location.href = 'stroll-signin.html';
+                        return;
+                    }
+
+                    currentUserUID = user.uid;
+                    console.log('✅ User authenticated:', currentUserUID);
+                    loadPOIWithFirebase();
+                });
+            } catch (err) {
+                console.error('❌ Firebase error:', err);
+                loadPOIMock();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            init();
+            
+            document.getElementById('heartBtn').addEventListener('click', handleLike);
+            document.getElementById('refreshBtn').addEventListener('click', handleRefresh);
+            
+            document.getElementById('detailsBtn').addEventListener('click', () => {
+                if (currentPOI) {
+                    console.log('🔍 Full POI data:', currentPOI);
                     
-                    // Adjust map bounds to include POI
-                    const bounds = new google.maps.LatLngBounds();
-                    if (startMarker) bounds.extend(startMarker.getPosition());
-                    if (endMarker) bounds.extend(endMarker.getPosition());
-                    bounds.extend({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                    let mapsUrl = '';
+                    
+                    // Check if we have coordinates (support multiple field names)
+                    // x = longitude, y = latitude (your database format)
+                    const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
+                    const lon = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
+                    
+                    console.log('🌍 Extracted coordinates - Latitude:', lat, 'Longitude:', lon);
+                    
+                    if (lat && lon) {
+                        // Use coordinates for precise location
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+                        console.log('✅ Using coordinates - Opening:', mapsUrl);
+                    } else {
+                        // Fall back to name + address search
+                        let searchQuery = '';
+                        
+                        if (currentPOI.name && currentPOI.address) {
+                            searchQuery = `${currentPOI.name}, ${currentPOI.address}`;
+                        } else if (currentPOI.name) {
+                            searchQuery = currentPOI.name;
+                        } else if (currentPOI.address) {
+                            searchQuery = currentPOI.address;
+                        } else {
+                            console.error('❌ No location data available for POI');
+                            return;
+                        }
+                        
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                        console.log('⚠️ No coordinates - using text search:', searchQuery);
+                    }
+                    
+                    window.open(mapsUrl, '_blank');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
