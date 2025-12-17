@@ -514,21 +514,46 @@
                 const poisQ = query(poisRef, where('amenity', '==', amenityChoice));
                 const poisSnap = await getDocs(poisQ);
 
+                console.log('🔍 Querying POIs with amenity:', amenityChoice);
+                console.log('🔍 Total POIs returned:', poisSnap.docs.length);
+
                 if (poisSnap.empty) {
                     console.warn('No POIs found for', amenityChoice);
+                    
+                    // Try to find ANY POI to debug
+                    console.log('🔍 Searching for ANY POI to debug...');
+                    const allPoisQ = query(poisRef, limit(5));
+                    const allPoisSnap = await getDocs(allPoisQ);
+                    console.log('📊 Sample POIs from database:');
+                    allPoisSnap.docs.forEach(d => {
+                        const data = d.data();
+                        console.log('  -', data.name || 'Unnamed', '|', 
+                                   'amenity:', data.amenity, '|',
+                                   'Fields:', Object.keys(data).join(', '));
+                    });
+                    
                     return;
                 }
 
                 // Filter POIs to only those along the route
                 console.log('🔍 Total POIs before filtering:', poisSnap.docs.length);
+                console.log('📍 Route has', routePolyline.length, 'points');
+                console.log('📍 Route bounds:', {
+                    firstPoint: routePolyline[0],
+                    lastPoint: routePolyline[routePolyline.length - 1]
+                });
                 
                 let routePOIs = poisSnap.docs.filter(d => {
                     const data = d.data();
-                    const lat = data.y || data.lat || data.latitude;
-                    const lng = data.x || data.lon || data.lng || data.longitude;
                     
-                    console.log('📌 Checking POI:', data.name, '| Coords:', { lat, lng });
-                    console.log('   All fields:', Object.keys(data));
+                    // Try multiple possible coordinate field names
+                    const lat = data.y || data.lat || data.latitude || data.Latitude;
+                    const lng = data.x || data.lon || data.lng || data.longitude || data.Longitude;
+                    
+                    console.log('📌 Checking POI:', data.name || 'Unnamed');
+                    console.log('   Raw data fields:', Object.keys(data));
+                    console.log('   Extracted coords: lat=', lat, 'lng=', lng);
+                    console.log('   y=', data.y, 'x=', data.x);
                     
                     if (!lat || !lng) {
                         console.log('   ❌ Missing coordinates');
@@ -536,7 +561,6 @@
                     }
                     
                     const isAlong = isAlongRoute(lat, lng, 800); // Increased to 800m
-                    console.log('   Result:', isAlong ? '✅ Along route' : '❌ Too far');
                     
                     return isAlong;
                 });
@@ -707,4 +731,5 @@
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC9QL4PQdqupzoE-VPz0R-L6aKsknVZchY&libraries=places" async defer></script>
 </body>
+</html></body>
 </html>
