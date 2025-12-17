@@ -753,9 +753,17 @@
         async function savePreferencesToFirebase() {
             try {
                 if (!currentUserUID || !db || !userDocId) {
-                    console.warn('⚠️ Cannot save preferences');
+                    console.warn('⚠️ Cannot save preferences - missing:', {
+                        hasUID: !!currentUserUID,
+                        hasDB: !!db,
+                        hasDocId: !!userDocId
+                    });
                     return false;
                 }
+                
+                console.log('💾 Saving preferences to Firebase...');
+                console.log('   Document ID:', userDocId);
+                console.log('   Preferences to save:', userPreferences);
                 
                 const userRef = doc(db, 'users', userDocId);
                 await updateDoc(userRef, { 
@@ -763,10 +771,12 @@
                     UpdatedAt: serverTimestamp()
                 });
                 
-                console.log('✅ Preferences saved');
+                console.log('✅✅✅ Preferences saved successfully to Firebase!');
+                console.log('📊 Saved preferences:', JSON.stringify(userPreferences, null, 2));
                 return true;
             } catch (err) {
-                console.error('❌ Error saving:', err);
+                console.error('❌ Error saving preferences:', err);
+                console.error('Error details:', err.message);
                 return false;
             }
         }
