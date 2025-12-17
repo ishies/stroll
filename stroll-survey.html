@@ -531,7 +531,6 @@
                 }
             } catch (err) {
                 console.error('Error loading clusters:', err);
-                // Use fallback
                 mockCentroids = [
                     {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
                     {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
@@ -608,7 +607,6 @@
                 
                 const cluster = findCluster(userData);
                 
-                // Save user profile to Firestore
                 await addDoc(collection(db, 'users'), {
                     uid: currentUser.uid,
                     email: currentUser.email,
@@ -622,17 +620,15 @@
                     CreatedAt: new Date().toISOString()
                 });
                 
-                console.log('✅ User profile saved successfully');
-                console.log('📊 Assigned cluster:', cluster);
+                console.log('✅ Profile saved! Cluster:', cluster);
                 
-                // Wait a moment for Firebase to finish, then redirect
                 setTimeout(() => {
                     window.location.href = 'stroll-nav.html';
                 }, 500);
                 
             } catch (err) {
-                console.error('❌ Error saving profile:', err);
-                showError('Failed to save profile. Please try again.');
+                console.error('❌ Error:', err);
+                showError('Failed to save. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
             }
