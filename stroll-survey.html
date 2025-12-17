@@ -579,7 +579,9 @@
             
             if (!currentUser) {
                 showError('Please log in first');
-                window.location.href = 'stroll-signin.html';
+                setTimeout(() => {
+                    window.location.href = 'stroll-signin.html';
+                }, 1000);
                 return;
             }
             
@@ -620,14 +622,16 @@
                     CreatedAt: new Date().toISOString()
                 });
                 
-                console.log('User profile saved successfully');
-                console.log('Assigned cluster:', cluster);
+                console.log('✅ User profile saved successfully');
+                console.log('📊 Assigned cluster:', cluster);
                 
-                // Redirect to navigation page
-                window.location.href = 'stroll-nav.html';
+                // Wait a moment for Firebase to finish, then redirect
+                setTimeout(() => {
+                    window.location.href = 'stroll-nav.html';
+                }, 500);
                 
             } catch (err) {
-                console.error('Error saving profile:', err);
+                console.error('❌ Error saving profile:', err);
                 showError('Failed to save profile. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
