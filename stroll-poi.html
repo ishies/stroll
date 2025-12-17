@@ -598,16 +598,50 @@
             heartBtn.classList.remove('liked');
         }
 
+        // Save activity log to Firebase
+        async function saveActivityLog(action, amenityType, poiName) {
+            if (!USE_FIREBASE || !db || !auth?.currentUser) return;
+            
+            try {
+                const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                const logsRef = collection(db, 'activity_logs');
+                await addDoc(logsRef, {
+                    uid: auth.currentUser.uid,
+                    email: auth.currentUser.email,
+                    action: action, // 'like' or 'unlike'
+                    amenityType: amenityType,
+                    poiName: poiName,
+                    timestamp: serverTimestamp(),
+                    preferences: userPreferences
+                });
+                
+                console.log('📝 Activity log saved:', action, amenityType);
+            } catch (err) {
+                console.error('❌ Failed to save activity log:', err);
+            }
+        }
+
         // Handle like with Firebase
         async function handleLikeWithFirebase() {
-            if (!currentPOI) return;
+            console.log('🟢 handleLikeWithFirebase CALLED');
+            
+            if (!currentPOI) {
+                console.log('❌ No current POI');
+                return;
+            }
 
             const amenityType = currentPOI.amenity || currentPOI.type;
+            const poiName = currentPOI.name || 'Unknown';
             
+            console.log('🟢 Processing like for:', poiName, 'type:', amenityType);
+            
+            let action;
             if (!isLiked) {
                 isLiked = true;
                 userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-                console.log('❤️ Liked:', amenityType, '- New count:', userPreferences[amenityType]);
+                action = 'like';
+                console.log('❤️ LIKED:', amenityType, '- New count:', userPreferences[amenityType]);
             } else {
                 isLiked = false;
                 if (userPreferences[amenityType] > 0) {
@@ -616,7 +650,8 @@
                         delete userPreferences[amenityType];
                     }
                 }
-                console.log('💔 Unliked:', amenityType);
+                action = 'unlike';
+                console.log('💔 UNLIKED:', amenityType);
             }
 
             // Update UI immediately
@@ -624,11 +659,11 @@
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
             
-            console.log('Current preferences:', userPreferences);
-            console.log('About to save to Firebase...');
-            console.log('User:', auth?.currentUser?.email);
-            console.log('DB:', !!db);
-            console.log('UserDocId:', userDocId);
+            console.log('📊 Current preferences:', userPreferences);
+            console.log('🔍 About to save to Firebase...');
+            console.log('   - User:', auth?.currentUser?.email);
+            console.log('   - DB exists:', !!db);
+            console.log('   - UserDocId:', userDocId);
 
             // Convert preferences to strings for Firestore compatibility
             const preferencesForFirestore = {};
@@ -636,7 +671,7 @@
                 preferencesForFirestore[key] = String(userPreferences[key]);
             }
             
-            console.log('Preferences as strings:', preferencesForFirestore);
+            console.log('📝 Preferences as strings:', preferencesForFirestore);
 
             // Save to Firebase using stored document ID
             try {
@@ -659,31 +694,39 @@
                 
                 const userDocRef = doc(db, 'users', userDocId);
                 
+                console.log('🚀 Attempting Firebase update...');
+                
                 // Try update first, if fails use setDoc with merge
                 try {
                     await updateDoc(userDocRef, {
                         preferences: preferencesForFirestore
                     });
-                    console.log('✅ Preferences UPDATED in Firebase:', preferencesForFirestore);
+                    console.log('✅✅✅ Preferences UPDATED in Firebase:', preferencesForFirestore);
                 } catch (updateErr) {
                     console.warn('⚠️ Update failed, trying setDoc with merge:', updateErr.message);
                     await setDoc(userDocRef, {
                         preferences: preferencesForFirestore
                     }, { merge: true });
-                    console.log('✅ Preferences MERGED in Firebase:', preferencesForFirestore);
+                    console.log('✅✅✅ Preferences MERGED in Firebase:', preferencesForFirestore);
                 }
                 
+                // Save activity log
+                await saveActivityLog(action, amenityType, poiName);
+                
             } catch (err) {
-                console.error('❌ Error updating preferences:', err);
-                console.error('Error code:', err.code);
-                console.error('Error message:', err.message);
-                console.error('Full error:', err);
+                console.error('❌❌❌ Error updating preferences:', err);
+                console.error('   - Error code:', err.code);
+                console.error('   - Error message:', err.message);
+                console.error('   - Full error:', err);
             }
         }
 
         // Handle like (mock version)
         function handleLike() {
+            console.log('🔵 handleLike called, USE_FIREBASE:', USE_FIREBASE);
+            
             if (USE_FIREBASE) {
+                console.log('🔵 Calling handleLikeWithFirebase...');
                 handleLikeWithFirebase();
                 return;
             }
