@@ -310,107 +310,9 @@
     </style>
 </head>
 <body>
-    <!-- Google Places API Script -->
-    <script>
-        // Google Places Autocomplete
-        let startingAutocomplete;
-        let destinationAutocomplete;
-
-        function initializeGooglePlaces() {
-            const startingInput = document.getElementById('starting-point');
-            const destinationInput = document.getElementById('destination');
-            const startingSuggestions = document.getElementById('starting-suggestions');
-            const destinationSuggestions = document.getElementById('destination-suggestions');
-
-            // Restrict results to specific bounds (NYC area)
-            const nycBounds = new google.maps.LatLngBounds(
-    new google.maps.LatLng(40.5795, -74.2591),
-    new google.maps.LatLng(40.9176, -73.7034)
-);
-
-            // Create autocomplete service
-            const service = new google.maps.places.AutocompleteService();
-
-            function handleInput(input, suggestionsList) {
-                input.addEventListener('input', async (e) => {
-                    const query = e.target.value.trim();
-                    suggestionsList.innerHTML = '';
-
-                    if (query.length < 2) {
-                        suggestionsList.classList.remove('active');
-                        return;
-                    }
-
-                    try {
-                        service.getPlacePredictions({
-                            input: query,
-                            bounds: nycBounds,
-                            componentRestrictions: { country: 'us' }
-                        }, (predictions, status) => {
-                            if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
-                                suggestionsList.classList.remove('active');
-                                return;
-                            }
-
-                            predictions.forEach(prediction => {
-                                const li = document.createElement('li');
-                                li.className = 'autocomplete-item';
-                                li.textContent = prediction.description;
-                                li.addEventListener('click', () => {
-                                    input.value = prediction.description;
-                                    suggestionsList.classList.remove('active');
-                                    suggestionsList.innerHTML = '';
-                                });
-                                suggestionsList.appendChild(li);
-                            });
-
-                            suggestionsList.classList.add('active');
-                        });
-                    } catch (err) {
-                        console.error('Places API error:', err);
-                    }
-                });
-
-                // Hide suggestions when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (e.target !== input && !suggestionsList.contains(e.target)) {
-                        suggestionsList.classList.remove('active');
-                    }
-                });
-            }
-
-            handleInput(startingInput, startingSuggestions);
-            handleInput(destinationInput, destinationSuggestions);
-
-            // Handle form submission
-            const form = document.querySelector('form');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const starting = startingInput.value.trim();
-                    const destination = destinationInput.value.trim();
-                    
-                    if (starting && destination) {
-                        console.log('Route:', { starting, destination });
-                        // Store route in sessionStorage for POI page to use
-                        sessionStorage.setItem('strollRoute', JSON.stringify({ starting, destination }));
-                        window.location.href = 'stroll-poi.html';
-                    }
-                });
-            }
-        }
-    </script>
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=YOUR_REAL_GOOGLE_PLACES_API_KEY&libraries=places&callback=initializeGooglePlaces"
-  async
-  defer>
-</script>
-
-    
     <div class="phone-container">
         <button class="logout-btn" id="logoutBtn">Logout</button>
         
-        <!-- Sky and background buildings -->
         <div class="sky-buildings">
             <div class="building-skyline">
                 <div class="skyscraper sky-1"></div>
@@ -429,10 +331,8 @@
         <div class="cloud cloud-1">☁️</div>
         <div class="cloud cloud-2">☁️</div>
 
-        <!-- Park ground -->
         <div class="park-ground"></div>
 
-        <!-- Trees -->
         <div class="tree-container tree-1">
             <div class="tree">🌳</div>
         </div>
@@ -468,7 +368,6 @@
             </form>
         </div>
 
-        <!-- Foreground buildings -->
         <div class="city-buildings">
             <div style="display: flex; align-items: flex-end;">
                 <div class="building building-left-1">
@@ -538,7 +437,6 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // Check authentication state
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log('✅ User authenticated:', user.email);
@@ -549,7 +447,6 @@
             }
         });
 
-        // Logout handler
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             try {
                 await signOut(auth);
@@ -559,6 +456,89 @@
                 console.error('❌ Sign out error:', err);
             }
         });
+
+        // Handle form submission
+        const form = document.querySelector('form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const starting = document.getElementById('starting-point').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            
+            if (starting && destination) {
+                console.log('🗺️ Route:', { starting, destination });
+                sessionStorage.setItem('strollRoute', JSON.stringify({ starting, destination }));
+                window.location.href = 'stroll-poi.html';
+            }
+        });
     </script>
+
+    <!-- Google Places API - Load after DOM is ready -->
+    <script>
+        function initializeGooglePlaces() {
+            const startingInput = document.getElementById('starting-point');
+            const destinationInput = document.getElementById('destination');
+            const startingSuggestions = document.getElementById('starting-suggestions');
+            const destinationSuggestions = document.getElementById('destination-suggestions');
+
+            const nycBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(40.5795, -74.2591),
+                new google.maps.LatLng(40.9176, -73.7034)
+            );
+
+            const service = new google.maps.places.AutocompleteService();
+
+            function handleInput(input, suggestionsList) {
+                input.addEventListener('input', (e) => {
+                    const query = e.target.value.trim();
+                    suggestionsList.innerHTML = '';
+
+                    if (query.length < 2) {
+                        suggestionsList.classList.remove('active');
+                        return;
+                    }
+
+                    service.getPlacePredictions({
+                        input: query,
+                        locationBias: nycBounds,
+                        componentRestrictions: { country: 'us' }
+                    }, (predictions, status) => {
+                        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+                            suggestionsList.classList.remove('active');
+                            return;
+                        }
+
+                        predictions.forEach(prediction => {
+                            const li = document.createElement('li');
+                            li.className = 'autocomplete-item';
+                            li.textContent = prediction.description;
+                            li.addEventListener('click', () => {
+                                input.value = prediction.description;
+                                suggestionsList.classList.remove('active');
+                                suggestionsList.innerHTML = '';
+                            });
+                            suggestionsList.appendChild(li);
+                        });
+
+                        suggestionsList.classList.add('active');
+                    });
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (e.target !== input && !suggestionsList.contains(e.target)) {
+                        suggestionsList.classList.remove('active');
+                    }
+                });
+            }
+
+            handleInput(startingInput, startingSuggestions);
+            handleInput(destinationInput, destinationSuggestions);
+        }
+
+        // Check if Google Maps API is loaded
+        if (typeof google !== 'undefined' && google.maps) {
+            initializeGooglePlaces();
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_REAL_GOOGLE_PLACES_API_KEY&libraries=places&callback=initializeGooglePlaces&loading=async" async defer></script>
 </body>
 </html>
