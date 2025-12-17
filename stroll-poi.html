@@ -609,6 +609,8 @@
             
             document.getElementById('detailsBtn').addEventListener('click', () => {
                 if (currentPOI) {
+                    console.log('📍 Full POI data:', currentPOI);
+                    
                     let mapsUrl = '';
                     
                     // Check if we have coordinates (support multiple field names)
@@ -616,10 +618,12 @@
                     const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
                     const lon = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
                     
+                    console.log('🌍 Extracted coordinates - Latitude:', lat, 'Longitude:', lon);
+                    
                     if (lat && lon) {
                         // Use coordinates for precise location
                         mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-                        console.log('🗺️ Opening Google Maps with coordinates:', lat, lon);
+                        console.log('✅ Using coordinates - Opening:', mapsUrl);
                     } else {
                         // Fall back to name + address search
                         let searchQuery = '';
@@ -636,7 +640,7 @@
                         }
                         
                         mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                        console.log('🗺️ Opening Google Maps for:', searchQuery);
+                        console.log('⚠️ No coordinates - using text search:', searchQuery);
                     }
                     
                     window.open(mapsUrl, '_blank');
