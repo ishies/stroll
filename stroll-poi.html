@@ -663,7 +663,7 @@
                 console.log('📍 Found', routePOIs.length, 'POIs along route out of', poisSnap.docs.length, 'total');
 
                 if (routePOIs.length === 0) {
-                    console.warn('No POIs along route, showing all available');
+                    console.warn('⚠️ No POIs along route, showing all available');
                     routePOIs = poisSnap.docs;
                 }
 
@@ -678,6 +678,9 @@
                 currentPOI = { ...chosenDoc.data(), _id: chosenDoc.id };
                 shownPOIs.push(chosenDoc.id);
                 if (shownPOIs.length > 10) shownPOIs.shift();
+
+                console.log('✅ Selected POI:', currentPOI.name);
+                console.log('📦 POI data:', currentPOI);
 
                 updateUI();
 
