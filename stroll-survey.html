@@ -501,7 +501,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Check if user is authenticated
         let currentUser = null;
         onAuthStateChanged(auth, (user) => {
             if (!user) {
@@ -512,7 +511,6 @@
             }
         });
 
-        // Load clusters from Firebase
         let mockCentroids = [];
         async function loadClusters() {
             try {
@@ -521,7 +519,6 @@
                     mockCentroids = clustersSnap.docs.map(doc => doc.data());
                     console.log('✅ Loaded clusters from Firebase:', mockCentroids);
                 } else {
-                    // Fallback to hardcoded centroids if Firebase is empty
                     mockCentroids = [
                         {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
                         {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
@@ -607,9 +604,8 @@
                 
                 const cluster = findCluster(userData);
                 
-                console.log('🔍 Finding user document for UID:', currentUser.uid);
+                console.log('🔍 Updating user document for UID:', currentUser.uid);
                 
-                // ✅ DIRECTLY reference the user document by UID
                 const userDocRef = doc(db, 'users', currentUser.uid);
 
                 await updateDoc(userDocRef, {
@@ -622,14 +618,14 @@
                     UpdatedAt: serverTimestamp()
                 });
                 
-                console.log('✅ Profile updated! Cluster:', cluster);
-                console.log('✅ Document ID:', currentUser.uid);
+                console.log('✅ Profile updated successfully!');
+                console.log('✅ User ID:', currentUser.uid);
+                console.log('✅ Assigned to Cluster:', cluster);
                 
-                // Redirect to nav page
                 window.location.replace('stroll-nav.html');
                 
             } catch (err) {
-                console.error('❌ Error:', err);
+                console.error('❌ Error updating profile:', err);
                 showError(err.message || 'Failed to save. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
