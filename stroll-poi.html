@@ -278,6 +278,8 @@
         let directionsService = null;
         let directionsRenderer = null;
         let poiMarker = null;
+        let startMarker = null;
+        let endMarker = null;
 
         // Get route from sessionStorage
         const savedRoute = sessionStorage.getItem('strollRoute');
@@ -404,13 +406,13 @@
                     });
                 });
 
-                directionsRenderer.setDirections(result);
+                // Don't use directionsRenderer (it adds its own markers)
+                // Instead, manually draw the route
+                const route = result.routes[0];
                 routeData = result;
                 
                 // Extract polyline points from the route
-                const route = result.routes[0];
                 routePolyline = [];
-                
                 route.overview_path.forEach(point => {
                     routePolyline.push({
                         lat: point.lat(),
@@ -418,12 +420,70 @@
                     });
                 });
 
-                // Update route info display
+                // Draw the route path
+                const routePath = new google.maps.Polyline({
+                    path: routePolyline,
+                    geodesic: true,
+                    strokeColor: '#4A90E2',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 4,
+                    map: map
+                });
+
+                // Add custom start marker (green)
                 const leg = route.legs[0];
+                startMarker = new google.maps.Marker({
+                    position: leg.start_location,
+                    map: map,
+                    title: 'Start: ' + routeInfo.starting,
+                    label: {
+                        text: 'A',
+                        color: 'white',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#4CAF50',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    }
+                });
+
+                // Add custom end marker (red)
+                endMarker = new google.maps.Marker({
+                    position: leg.end_location,
+                    map: map,
+                    title: 'End: ' + routeInfo.destination,
+                    label: {
+                        text: 'B',
+                        color: 'white',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#F44336',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    }
+                });
+
+                // Update route info display
                 document.getElementById('routeInfo').textContent = 
                     `${leg.distance.text} • ${leg.duration.text}`;
 
+                // Fit map to show entire route
+                const bounds = new google.maps.LatLngBounds();
+                routePolyline.forEach(point => bounds.extend(point));
+                map.fitBounds(bounds);
+
                 console.log('✅ Route loaded:', routePolyline.length, 'points');
+                console.log('📍 Start:', leg.start_location.lat(), leg.start_location.lng());
+                console.log('📍 End:', leg.end_location.lat(), leg.end_location.lng());
+                
                 return true;
             } catch (err) {
                 console.error('❌ Error getting route:', err);
@@ -463,6 +523,9 @@
                         userPreferences[key] = typeof rawPrefs[key] === 'number' ? 
                             rawPrefs[key] : parseInt(rawPrefs[key]) || 0;
                     }
+                    console.log('📊 Current user preferences:', userPreferences);
+                } else {
+                    console.log('⚠️ No existing preferences found');
                 }
 
                 const centroidsRef = collection(db, 'clusters');
@@ -483,10 +546,14 @@
                 }
 
                 if (Object.keys(userPreferences).length === 0) {
+                    console.log('🆕 Initializing preferences from cluster amenities');
                     amenities.forEach(a => {
                         userPreferences[a.amenity] = a.frequency;
                     });
+                    console.log('✅ Initial preferences set:', userPreferences);
                     await savePreferencesToFirebase();
+                } else {
+                    console.log('✅ Using existing preferences');
                 }
 
                 // Get variability from localStorage
@@ -500,15 +567,16 @@
                 if (Math.random() < explorationRate) {
                     const randomAmenity = amenities[Math.floor(Math.random() * amenities.length)];
                     amenityChoice = randomAmenity.amenity;
-                    console.log('🔍 EXPLORING:', amenityChoice);
+                    console.log('🔍 EXPLORING (random choice):', amenityChoice);
                 } else {
                     const weightedAmenities = amenities.map(a => ({
                         amenity: a.amenity,
                         frequency: userPreferences[a.amenity] || 1
                     }));
+                    console.log('🎯 Weighted options:', weightedAmenities);
                     const picked = weightedPick(weightedAmenities);
                     amenityChoice = picked.amenity;
-                    console.log('✅ Using preference:', amenityChoice);
+                    console.log('✅ Using preference-based choice:', amenityChoice, '(weight:', picked.frequency, ')');
                 }
 
                 const poisRef = collection(db, 'pois');
@@ -632,31 +700,47 @@
                 const lat = currentPOI.y || currentPOI.lat || currentPOI.latitude;
                 const lng = currentPOI.x || currentPOI.lon || currentPOI.lng || currentPOI.longitude;
                 
+                console.log('🗺️ Adding POI to map:', currentPOI.name);
+                console.log('   Coordinates:', lat, lng);
+                
                 if (lat && lng) {
                     // Remove old marker if exists
                     if (poiMarker) {
                         poiMarker.setMap(null);
                     }
                     
-                    // Add new marker
+                    // Add new POI marker (brown/coffee color)
                     poiMarker = new google.maps.Marker({
                         position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                         map: map,
                         title: currentPOI.name || 'POI',
+                        label: {
+                            text: '★',
+                            color: 'white',
+                            fontSize: '18px',
+                            fontWeight: 'bold'
+                        },
                         icon: {
                             path: google.maps.SymbolPath.CIRCLE,
-                            scale: 10,
+                            scale: 15,
                             fillColor: '#8b5a3c',
                             fillOpacity: 1,
                             strokeColor: '#ffffff',
                             strokeWeight: 3
-                        }
+                        },
+                        zIndex: 1000
                     });
                     
-                    // Center map on POI
-                    map.panTo({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                    // Adjust map bounds to include POI
+                    const bounds = new google.maps.LatLngBounds();
+                    if (startMarker) bounds.extend(startMarker.getPosition());
+                    if (endMarker) bounds.extend(endMarker.getPosition());
+                    bounds.extend({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                    map.fitBounds(bounds);
                     
-                    console.log('📍 Added POI marker at:', lat, lng);
+                    console.log('✅ POI marker added at:', lat, lng);
+                } else {
+                    console.warn('⚠️ No coordinates found for POI');
                 }
             }
         }
@@ -694,7 +778,8 @@
             if (!isLiked) {
                 isLiked = true;
                 userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-                console.log('❤️ LIKED:', amenityType);
+                console.log('❤️ LIKED:', amenityType, '- New count:', userPreferences[amenityType]);
+                console.log('📊 Updated preferences:', userPreferences);
             } else {
                 isLiked = false;
                 if (userPreferences[amenityType] > 0) {
@@ -703,7 +788,8 @@
                         delete userPreferences[amenityType];
                     }
                 }
-                console.log('💔 UNLIKED:', amenityType);
+                console.log('💔 UNLIKED:', amenityType, '- New count:', userPreferences[amenityType] || 0);
+                console.log('📊 Updated preferences:', userPreferences);
             }
 
             const heartBtn = document.getElementById('heartBtn');
@@ -742,14 +828,16 @@
                     // Initialize Google Maps
                     if (typeof google !== 'undefined') {
                         directionsService = new google.maps.DirectionsService();
-                        directionsRenderer = new google.maps.DirectionsRenderer();
                         
                         map = new google.maps.Map(document.getElementById('map'), {
                             zoom: 14,
-                            center: { lat: 40.7580, lng: -73.9855 }
+                            center: { lat: 40.7580, lng: -73.9855 },
+                            mapTypeControl: false,
+                            streetViewControl: false,
+                            fullscreenControl: false
                         });
                         
-                        directionsRenderer.setMap(map);
+                        console.log('🗺️ Map initialized');
                         
                         // Get route first, then load POIs
                         const routeLoaded = await getRouteFromGoogle();
