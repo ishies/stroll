@@ -34,6 +34,7 @@
         .form-input { width: 100%; padding: 12px 14px; border: 2px solid rgba(255,255,255,0.3); border-radius: 12px; font-size: 15px; background: rgba(255,255,255,0.9); color: #333; font-family: 'Clarendon', 'Georgia', serif; }
         .button { width: 100%; padding: 16px; border: none; border-radius: 15px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
         .signup-btn { background: linear-gradient(135deg, #8b5a3c 0%, #a0745c 100%); color: white; box-shadow: 0 4px 15px rgba(139,90,60,0.4); }
+        .signup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .link-row { margin-top: 12px; color: white; font-size: 14px; }
         .link-row a { color: white; font-weight: 700; text-decoration: none; }
         #signup-error { display:none; color:#ffe5e5; background:rgba(0,0,0,0.15); padding:8px; border-radius:8px; margin-bottom:12px; font-size:13px; }
@@ -46,7 +47,7 @@
 </head>
 <body>
     <div class="phone-container">
-        <div class="back-arrow" onclick="window.history.back()">‹</div>
+        <div class="back-arrow" onclick="window.location.href='index.html'">‹</div>
         
         <!-- Sky and background buildings -->
         <div class="sky-buildings">
@@ -128,7 +129,7 @@
                     <input type="password" id="signup-password" class="form-input" placeholder="Create a password" required>
                 </div>
 
-                <button type="submit" class="button signup-btn">Sign Up</button>
+                <button type="submit" class="button signup-btn" id="signup-btn">Sign Up</button>
             </form>
 
             <div class="link-row">Already have an account? <a href="stroll-signin.html">Sign In</a></div>
@@ -190,7 +191,7 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
@@ -208,21 +209,45 @@
 
     const signupForm = document.getElementById('signup-form');
     const signupError = document.getElementById('signup-error');
+    const signupBtn = document.getElementById('signup-btn');
 
     if (signupForm) {
       signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         signupError.style.display = 'none';
+        
         const email = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value;
 
+        // Disable button during signup
+        signupBtn.disabled = true;
+        signupBtn.textContent = 'Creating Account...';
+
         try {
+          // Create Firebase Auth user
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          console.log('User created:', userCredential.user);
-          // Redirect to survey page after signup
+          const user = userCredential.user;
+          
+          console.log('✅ User created in Auth:', user.uid);
+
+          // Create user document in Firestore
+          // Note: Cluster will be assigned after survey, so we set it to null initially
+          const usersRef = collection(db, 'users');
+          await addDoc(usersRef, {
+            uid: user.uid,
+            email: email,
+            Cluster: null,  // Will be assigned after survey
+            preferences: {},  // Empty preferences initially
+            CreatedAt: serverTimestamp()
+          });
+
+          console.log('✅ User document created in Firestore');
+
+          // Redirect to survey page to determine cluster
           window.location.href = 'stroll-survey.html';
+          
         } catch (err) {
-          console.error('Signup error', err);
+          console.error('❌ Signup error', err);
           let msg = 'Sign-up failed. Please check the details and try again.';
           if (err && err.code) {
             if (err.code === 'auth/email-already-in-use') msg = 'That email is already in use.';
@@ -231,6 +256,10 @@
           }
           signupError.textContent = msg;
           signupError.style.display = 'block';
+          
+          // Re-enable button
+          signupBtn.disabled = false;
+          signupBtn.textContent = 'Sign Up';
         }
       });
     }
