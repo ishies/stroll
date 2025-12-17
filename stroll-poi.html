@@ -293,6 +293,7 @@
         let shownPOIs = [];
         let currentUserUID = null;
         let app = null;
+        let userDocId = null; // Store the actual Firestore document ID
 
         function parseAmenities(raw) {
             if (!raw) return [];
@@ -338,19 +339,26 @@
                     return;
                 }
 
-                // ✅ FIX: Use getDoc with doc reference instead of query
-                const userRef = doc(db, 'users', currentUserUID);
-                const userSnap = await getDoc(userRef);
+                // Query to find user document by uid field
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('uid', '==', currentUserUID));
+                const userQuerySnap = await getDocs(q);
 
-                if (!userSnap.exists()) {
+                if (userQuerySnap.empty) {
                     console.warn('No user profile found for UID:', currentUserUID);
                     loadPOIMock();
                     return;
                 }
 
-                const userData = userSnap.data();
+                // Get the first matching document and store its ID
+                const userDoc = userQuerySnap.docs[0];
+                userDocId = userDoc.id; // Store for later updates
+                const userData = userDoc.data();
                 const cluster = userData.Cluster;
                 
+                console.log('✅ Found user document ID:', userDocId);
+                console.log('User cluster:', cluster);
+
                 const rawPrefs = userData.preferences;
                 userPreferences = {};
                 
@@ -363,8 +371,6 @@
                         console.log('✅ Loaded preferences:', userPreferences);
                     }
                 }
-
-                console.log('User cluster:', cluster);
 
                 const centroidsRef = collection(db, 'clusters');
                 const centQ = query(centroidsRef, where('Cluster', '==', cluster), limit(1));
@@ -422,7 +428,7 @@
                     return;
                 }
 
-                let availableDocs = poisSnap.docs.filter(doc => !shownPOIs.includes(doc.id));
+                let availableDocs = poisSnap.docs.filter(d => !shownPOIs.includes(d.id));
                 if (availableDocs.length === 0) {
                     shownPOIs = [];
                     availableDocs = poisSnap.docs;
@@ -475,15 +481,30 @@
                 console.log('💾 Saving preferences for UID:', currentUserUID);
                 console.log('💾 Preferences:', userPreferences);
                 
-                const userRef = doc(db, 'users', currentUserUID);
+                // If we don't have the document ID yet, query for it
+                if (!userDocId) {
+                    const usersRef = collection(db, 'users');
+                    const q = query(usersRef, where('uid', '==', currentUserUID));
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (querySnapshot.empty) {
+                        console.error('❌ No user document found with uid:', currentUserUID);
+                        return false;
+                    }
+                    
+                    userDocId = querySnapshot.docs[0].id;
+                    console.log('📄 Found user document ID:', userDocId);
+                }
                 
-                // Use updateDoc instead of setDoc to only update existing document
+                // Now update using the document ID
+                const userRef = doc(db, 'users', userDocId);
+                
                 await updateDoc(userRef, { 
                     preferences: userPreferences,
                     UpdatedAt: serverTimestamp()
                 });
                 
-                console.log('✅ Preferences saved successfully');
+                console.log('✅✅✅ Preferences saved successfully to document:', userDocId);
                 return true;
             } catch (err) {
                 console.error('❌ Error saving preferences:', err);
@@ -501,7 +522,7 @@
             if (!isLiked) {
                 isLiked = true;
                 userPreferences[amenityType] = (userPreferences[amenityType] || 0) + 1;
-                console.log('❤️ LIKED:', amenityType);
+                console.log('❤️ LIKED:', amenityType, '- New count:', userPreferences[amenityType]);
             } else {
                 isLiked = false;
                 if (userPreferences[amenityType] > 0) {
@@ -516,6 +537,8 @@
             const heartBtn = document.getElementById('heartBtn');
             heartBtn.textContent = isLiked ? '♥' : '♡';
             heartBtn.classList.toggle('liked', isLiked);
+            
+            console.log('📊 Current preferences:', userPreferences);
             
             await savePreferencesToFirebase();
         }
