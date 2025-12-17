@@ -71,7 +71,7 @@
 
         .sun {
             position: absolute;
-            top: 60px;
+            top: 15px;
             right: 50px;
             width: 60px;
             height: 60px;
@@ -101,8 +101,8 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
-        .tree-1 { top: 160px; left: 15px; }
-        .tree-2 { top: 150px; right: 20px; }
+        .tree-1 { top: 175px; left: 15px; }
+        .tree-2 { top: 175px; right: 20px; }
 
         .cloud {
             position: absolute;
@@ -111,8 +111,8 @@
             z-index: 2;
         }
 
-        .cloud-1 { top: 80px; left: 40px; }
-        .cloud-2 { top: 100px; right: 60px; }
+        .cloud-1 { top: 20px; left: 40px; }
+        .cloud-2 { top: 35px; right: 60px; }
 
         .city-buildings {
             position: absolute;
@@ -124,6 +124,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
+            pointer-events: none;
         }
 
         .building {
@@ -173,7 +174,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 250px;
+            padding-top: 40px;
         }
 
         h1 {
@@ -327,6 +328,7 @@
             transform: translateY(-50%);
             font-size: 16px;
             color: #666;
+            pointer-events: none;
         }
 
         .input-wrapper {
@@ -383,6 +385,8 @@
             color: white;
             box-shadow: 0 4px 15px rgba(139,90,60,0.4);
             margin-top: 20px;
+            z-index: 11;
+            position: relative;
         }
 
         .button:hover {
