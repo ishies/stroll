@@ -321,7 +321,7 @@
 </head>
 <body>
     <div class="phone-container">
-        <div class="back-arrow" onclick="window.history.back()">‹</div>
+        <div class="back-arrow" onclick="window.location.href='index.html'">‹</div>
         
         <div class="sky-buildings">
             <div class="building-skyline">
@@ -485,7 +485,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCZlUYoU77T2cBHTxlQW6FWaMVX_0yZ5rc",
@@ -508,7 +508,7 @@
                 window.location.href = 'stroll-signin.html';
             } else {
                 currentUser = user;
-                console.log('User authenticated:', user.email);
+                console.log('✅ User authenticated:', user.email);
             }
         });
 
@@ -519,7 +519,7 @@
                 const clustersSnap = await getDocs(collection(db, 'clusters'));
                 if (!clustersSnap.empty) {
                     mockCentroids = clustersSnap.docs.map(doc => doc.data());
-                    console.log('Loaded clusters from Firebase:', mockCentroids);
+                    console.log('✅ Loaded clusters from Firebase:', mockCentroids);
                 } else {
                     // Fallback to hardcoded centroids if Firebase is empty
                     mockCentroids = [
@@ -527,10 +527,10 @@
                         {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
                         {Cluster: 2, Age: 22, Gender: 0.6, PriceRange: 0, Income: 0.2, Ambiance: 1}
                     ];
-                    console.log('Using fallback clusters');
+                    console.log('⚠️ Using fallback clusters');
                 }
             } catch (err) {
-                console.error('Error loading clusters:', err);
+                console.error('❌ Error loading clusters:', err);
                 mockCentroids = [
                     {Cluster: 0, Age: 25, Gender: 0.5, PriceRange: 1, Income: 0.4, Ambiance: 1},
                     {Cluster: 1, Age: 35, Gender: 0.3, PriceRange: 2, Income: 0.7, Ambiance: 0},
@@ -607,27 +607,38 @@
                 
                 const cluster = findCluster(userData);
                 
-                await addDoc(collection(db, 'users'), {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
+                console.log('🔍 Finding user document for UID:', currentUser.uid);
+                
+                // Find the existing user document by UID
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('uid', '==', currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    throw new Error('User document not found. Please sign up again.');
+                }
+                
+                // Update the EXISTING document (don't create a new one)
+                const userDocRef = doc(db, 'users', querySnapshot.docs[0].id);
+                await updateDoc(userDocRef, {
                     Cluster: cluster,
                     Age: age,
                     Gender: genderMap[gender] || 0.5,
                     PriceRange: price,
                     Income: Math.min(income / 375, 1),
                     Ambiance: ambiance,
-                    preferences: {},
-                    CreatedAt: new Date().toISOString()
+                    UpdatedAt: serverTimestamp()
                 });
                 
-                console.log('✅ Profile saved! Cluster:', cluster);
+                console.log('✅ Profile updated! Cluster:', cluster);
+                console.log('✅ Document ID:', querySnapshot.docs[0].id);
                 
-                // Force redirect immediately
+                // Redirect to nav page
                 window.location.replace('stroll-nav.html');
                 
             } catch (err) {
                 console.error('❌ Error:', err);
-                showError('Failed to save. Please try again.');
+                showError(err.message || 'Failed to save. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
             }
