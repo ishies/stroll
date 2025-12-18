@@ -406,9 +406,13 @@
                     amenities.forEach(a => {
                         // Use cluster frequencies directly as initial preferences
                         userPreferences[a.amenity] = a.frequency;
+                        console.log(`  Setting ${a.amenity} = ${a.frequency}`);
                     });
                     console.log('✅ Initial preferences set from cluster:', userPreferences);
-                    await savePreferencesToFirebase();
+                    const saved = await savePreferencesToFirebase();
+                    if (!saved) {
+                        console.error('❌ Failed to save initial preferences!');
+                    }
                 }
 
                 // Get exploration rate from localStorage (slider value from nav page)
@@ -619,9 +623,9 @@
                     if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
                         const lat = parseFloat(y);
                         const lon = parseFloat(x);
-                        // Use place format: opens at coordinates with pin and shows place name
+                        // Use place format with coordinates - Google will show the place name
                         mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(name)}/@${lat},${lon},17z`;
-                        console.log('✅ Opening Maps at place:', name, 'at', lat, lon);
+                        console.log('✅ Opening Maps with place name:', name, 'at', lat, lon);
                     } else {
                         // Fallback to address or name search
                         const searchQuery = currentPOI.address || name;
