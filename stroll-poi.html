@@ -603,14 +603,13 @@
                     
                     let mapsUrl;
                     
-                    // If we have coordinates, use them with the name for better results
+                    // If we have coordinates, use direct coordinates link
                     if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
                         const lat = parseFloat(y);
                         const lon = parseFloat(x);
-                        // Include name + coordinates so Google Maps shows the exact location with context
-                        const searchQuery = `${name} @${lat},${lon}`;
-                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                        console.log('✅ Opening Maps with name + coordinates:', searchQuery);
+                        // Use direct maps link format that opens at exact location
+                        mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                        console.log('✅ Opening Maps at exact coordinates:', lat, lon);
                     } else {
                         // Fallback to address or name search
                         const searchQuery = currentPOI.address || name;
