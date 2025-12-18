@@ -293,7 +293,7 @@
         let shownPOIs = [];
         let currentUserUID = null;
         let app = null;
-        let userDocId = null; // Store the actual Firestore document ID
+        let userDocId = null;
 
         function parseAmenities(raw) {
             if (!raw) return [];
@@ -339,7 +339,6 @@
                     return;
                 }
 
-                // Query to find user document by uid field
                 const usersRef = collection(db, 'users');
                 const q = query(usersRef, where('uid', '==', currentUserUID));
                 const userQuerySnap = await getDocs(q);
@@ -350,9 +349,8 @@
                     return;
                 }
 
-                // Get the first matching document and store its ID
                 const userDoc = userQuerySnap.docs[0];
-                userDocId = userDoc.id; // Store for later updates
+                userDocId = userDoc.id;
                 const userData = userDoc.data();
                 const cluster = userData.Cluster;
                 
@@ -401,7 +399,11 @@
                     await savePreferencesToFirebase();
                 }
 
-                const EXPLORATION_RATE = 0.20;
+                // Get exploration rate from localStorage (slider value from nav page)
+                const savedVariability = localStorage.getItem('strollVariability');
+                const EXPLORATION_RATE = savedVariability ? parseInt(savedVariability) / 100 : 0.20;
+                console.log('🎲 Exploration rate:', (EXPLORATION_RATE * 100) + '%');
+                
                 let amenityChoice;
                 
                 if (Math.random() < EXPLORATION_RATE) {
@@ -481,7 +483,6 @@
                 console.log('💾 Saving preferences for UID:', currentUserUID);
                 console.log('💾 Preferences:', userPreferences);
                 
-                // If we don't have the document ID yet, query for it
                 if (!userDocId) {
                     console.log('🔍 Querying for user document with uid:', currentUserUID);
                     const usersRef = collection(db, 'users');
@@ -501,7 +502,6 @@
                     console.log('📄 Document data:', querySnapshot.docs[0].data());
                 }
                 
-                // Now update using the document ID
                 const userRef = doc(db, 'users', userDocId);
                 
                 await updateDoc(userRef, { 
