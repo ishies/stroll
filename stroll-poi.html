@@ -360,14 +360,19 @@
                 const rawPrefs = userData.preferences;
                 userPreferences = {};
                 
-                if (rawPrefs) {
-                    if (typeof rawPrefs === 'object' && !Array.isArray(rawPrefs)) {
-                        for (const key in rawPrefs) {
-                            const value = rawPrefs[key];
-                            userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
-                        }
-                        console.log('✅ Loaded preferences:', userPreferences);
+                console.log('📊 Raw preferences from Firestore:', rawPrefs);
+                console.log('📊 Type of preferences:', typeof rawPrefs, Array.isArray(rawPrefs) ? '(array)' : '');
+                
+                if (rawPrefs && typeof rawPrefs === 'object' && !Array.isArray(rawPrefs) && Object.keys(rawPrefs).length > 0) {
+                    // User has existing preferences - load them
+                    for (const key in rawPrefs) {
+                        const value = rawPrefs[key];
+                        userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
                     }
+                    console.log('✅ Loaded existing user preferences:', userPreferences);
+                } else {
+                    // No preferences yet - will initialize after loading cluster
+                    console.log('ℹ️ No existing preferences found, will initialize from cluster');
                 }
 
                 const centroidsRef = collection(db, 'clusters');
@@ -382,7 +387,9 @@
 
                 const centroid = centSnap.docs[0].data();
                 const rawAmenities = centroid.amenities || centroid.Amenities;
+                console.log('🏷️ Raw amenities from cluster:', rawAmenities);
                 const amenities = parseAmenities(rawAmenities);
+                console.log('✅ Parsed amenities:', amenities);
 
                 if (!amenities || amenities.length === 0) {
                     console.warn('No amenities in centroid');
@@ -390,12 +397,17 @@
                     return;
                 }
 
-                if (Object.keys(userPreferences).length === 0) {
-                    console.log('🆕 Initializing preferences');
+                // Check if user already has preferences
+                const hasExistingPreferences = Object.keys(userPreferences).length > 0;
+                console.log('📊 Has existing preferences?', hasExistingPreferences, userPreferences);
+
+                if (!hasExistingPreferences) {
+                    console.log('🆕 Initializing preferences from cluster centroid');
                     amenities.forEach(a => {
-                        const normalizedFreq = Math.max(1, Math.min(10, Math.round(a.frequency / 10)));
-                        userPreferences[a.amenity] = normalizedFreq;
+                        // Use cluster frequencies directly as initial preferences
+                        userPreferences[a.amenity] = a.frequency;
                     });
+                    console.log('✅ Initial preferences set from cluster:', userPreferences);
                     await savePreferencesToFirebase();
                 }
 
@@ -603,13 +615,13 @@
                     
                     let mapsUrl;
                     
-                    // If we have coordinates, use direct coordinates link
+                    // If we have coordinates, use them to create a place link
                     if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
                         const lat = parseFloat(y);
                         const lon = parseFloat(x);
-                        // Use direct maps link format that opens at exact location
-                        mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-                        console.log('✅ Opening Maps at exact coordinates:', lat, lon);
+                        // Use place format: opens at coordinates with pin and shows place name
+                        mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(name)}/@${lat},${lon},17z`;
+                        console.log('✅ Opening Maps at place:', name, 'at', lat, lon);
                     } else {
                         // Fallback to address or name search
                         const searchQuery = currentPOI.address || name;
