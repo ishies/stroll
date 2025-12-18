@@ -302,17 +302,20 @@
                 const matches = [];
                 let match;
                 while ((match = tupleRegex.exec(raw)) !== null) {
-                    matches.push({ amenity: match[1].trim(), frequency: Number(match[2]) || 1 });
+                    const amenity = match[1].trim();
+                    const frequency = parseInt(match[2], 10);
+                    matches.push({ amenity, frequency });
+                    console.log(`  Parsed: ${amenity} = ${frequency} (type: ${typeof frequency})`);
                 }
                 if (matches.length > 0) return matches;
             }
             if (Array.isArray(raw)) {
                 return raw.map(item => {
-                    if (Array.isArray(item)) return { amenity: item[0], frequency: Number(item[1]) || 0 };
+                    if (Array.isArray(item)) return { amenity: item[0], frequency: parseInt(item[1], 10) || 0 };
                     if (typeof item === 'object') {
                         const amen = item.amenity || item.name || item[0];
-                        const freq = item.frequency || item.freq || item.count || 1;
-                        return { amenity: amen, frequency: Number(freq) || 0 };
+                        const freq = parseInt(item.frequency || item.freq || item.count || 1, 10);
+                        return { amenity: amen, frequency: freq };
                     }
                     return { amenity: String(item), frequency: 1 };
                 });
@@ -358,7 +361,6 @@
                 console.log('User cluster:', cluster);
 
                 const rawPrefs = userData.preferences;
-                userPreferences = {};
                 let preferencesAlreadyExist = false;
                 
                 console.log('📊 Raw preferences from Firestore:', rawPrefs);
@@ -366,6 +368,7 @@
                 
                 if (rawPrefs && typeof rawPrefs === 'object' && !Array.isArray(rawPrefs) && Object.keys(rawPrefs).length > 0) {
                     // User has existing preferences - load them
+                    userPreferences = {};
                     for (const key in rawPrefs) {
                         const value = rawPrefs[key];
                         userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
@@ -374,6 +377,7 @@
                     console.log('✅ Loaded existing user preferences:', userPreferences);
                 } else {
                     // No preferences yet - will initialize after loading cluster
+                    userPreferences = {};
                     console.log('ℹ️ No existing preferences found, will initialize from cluster');
                 }
 
@@ -403,9 +407,10 @@
                 if (!preferencesAlreadyExist) {
                     console.log('🆕 Initializing preferences from cluster centroid');
                     amenities.forEach(a => {
-                        // Use cluster frequencies directly as initial preferences
-                        userPreferences[a.amenity] = a.frequency;
-                        console.log(`  Setting ${a.amenity} = ${a.frequency}`);
+                        // Ensure frequency is a number
+                        const freq = parseInt(a.frequency, 10);
+                        userPreferences[a.amenity] = freq;
+                        console.log(`  Setting ${a.amenity} = ${freq} (type: ${typeof freq})`);
                     });
                     console.log('✅ Initial preferences set from cluster:', userPreferences);
                     const saved = await savePreferencesToFirebase();
@@ -613,31 +618,41 @@
                     console.log('🔍 Current POI data:', currentPOI);
                     
                     const name = currentPOI.name || '';
+                    const address = currentPOI.address || '';
                     const x = currentPOI.X || currentPOI.x || currentPOI.longitude || currentPOI.lon;
                     const y = currentPOI.Y || currentPOI.y || currentPOI.latitude || currentPOI.lat;
                     
-                    console.log('📍 Extracted - Name:', name, 'X:', x, 'Y:', y);
+                    console.log('📍 Extracted - Name:', name, 'Address:', address, 'X:', x, 'Y:', y);
                     
                     let mapsUrl;
                     
-                    // If we have coordinates and name, search for the name near those coordinates
-                    if (name && x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
-                        const lat = parseFloat(y);
-                        const lon = parseFloat(x);
-                        // Search for the name and use coordinates to narrow results
-                        mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lon},15z`;
-                        console.log('✅ Opening Maps search for:', name, 'near', lat, lon);
+                    // Priority: Use name + address for search, coordinates as backup for precision
+                    if (name) {
+                        // Search by name, optionally with address for context
+                        const searchQuery = address ? `${name}, ${address}` : name;
+                        
+                        // If we have coordinates, add them to help Google narrow down results
+                        if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
+                            const lat = parseFloat(y);
+                            const lon = parseFloat(x);
+                            // This searches for the name and centers map near coordinates
+                            mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(searchQuery)}/@${lat},${lon},15z`;
+                            console.log('✅ Opening Maps with name search:', searchQuery, 'near', lat, lon);
+                        } else {
+                            // Just search by name/address without coordinates
+                            mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                            console.log('✅ Opening Maps with name search:', searchQuery);
+                        }
                     } else if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
-                        // Just coordinates without name
+                        // Fallback: Only coordinates, no name
                         const lat = parseFloat(y);
                         const lon = parseFloat(x);
                         mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-                        console.log('✅ Opening Maps at coordinates:', lat, lon);
+                        console.log('⚠️ No name found, using coordinates:', lat, lon);
                     } else {
-                        // Fallback to address or name search
-                        const searchQuery = currentPOI.address || name;
-                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                        console.log('⚠️ No valid coordinates, using search:', searchQuery);
+                        // Last resort: Just address
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || 'location')}`;
+                        console.log('⚠️ Using address fallback:', address);
                     }
                     
                     window.open(mapsUrl, '_blank');
