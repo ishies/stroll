@@ -359,6 +359,7 @@
 
                 const rawPrefs = userData.preferences;
                 userPreferences = {};
+                let preferencesAlreadyExist = false;
                 
                 console.log('📊 Raw preferences from Firestore:', rawPrefs);
                 console.log('📊 Type of preferences:', typeof rawPrefs, Array.isArray(rawPrefs) ? '(array)' : '');
@@ -369,6 +370,7 @@
                         const value = rawPrefs[key];
                         userPreferences[key] = typeof value === 'number' ? value : parseInt(value) || 0;
                     }
+                    preferencesAlreadyExist = true;
                     console.log('✅ Loaded existing user preferences:', userPreferences);
                 } else {
                     // No preferences yet - will initialize after loading cluster
@@ -397,11 +399,8 @@
                     return;
                 }
 
-                // Check if user already has preferences
-                const hasExistingPreferences = Object.keys(userPreferences).length > 0;
-                console.log('📊 Has existing preferences?', hasExistingPreferences, userPreferences);
-
-                if (!hasExistingPreferences) {
+                // Only initialize if we didn't already load preferences from Firestore
+                if (!preferencesAlreadyExist) {
                     console.log('🆕 Initializing preferences from cluster centroid');
                     amenities.forEach(a => {
                         // Use cluster frequencies directly as initial preferences
@@ -413,6 +412,8 @@
                     if (!saved) {
                         console.error('❌ Failed to save initial preferences!');
                     }
+                } else {
+                    console.log('✅ Using existing preferences, skipping initialization');
                 }
 
                 // Get exploration rate from localStorage (slider value from nav page)
@@ -619,13 +620,19 @@
                     
                     let mapsUrl;
                     
-                    // If we have coordinates, use them to create a place link
-                    if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
+                    // If we have coordinates and name, search for the name near those coordinates
+                    if (name && x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
                         const lat = parseFloat(y);
                         const lon = parseFloat(x);
-                        // Use place format with coordinates - Google will show the place name
-                        mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(name)}/@${lat},${lon},17z`;
-                        console.log('✅ Opening Maps with place name:', name, 'at', lat, lon);
+                        // Search for the name and use coordinates to narrow results
+                        mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lon},15z`;
+                        console.log('✅ Opening Maps search for:', name, 'near', lat, lon);
+                    } else if (x !== undefined && y !== undefined && !isNaN(parseFloat(x)) && !isNaN(parseFloat(y))) {
+                        // Just coordinates without name
+                        const lat = parseFloat(y);
+                        const lon = parseFloat(x);
+                        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+                        console.log('✅ Opening Maps at coordinates:', lat, lon);
                     } else {
                         // Fallback to address or name search
                         const searchQuery = currentPOI.address || name;
