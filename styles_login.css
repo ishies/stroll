@@ -84,3 +84,11 @@ img{max-width:none}
 .fn-45_43{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:30.136986%;margin-top:17.808219%;width:39.383562%;height:47.474747%;min-width:0;min-height:0;display:grid;grid-template-columns:100%;grid-template-rows:100%}
 .fn-45_38{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:0%;margin-top:0%;width:40.869565%;height:100%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_45_38.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
 .fn-45_41{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:59.130435%;margin-top:0%;width:40.869565%;height:100%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_45_41.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
+
+/* Form inputs (replace the Figma text labels) */
+input.fn-42_12, input.fn-43_14 { background: transparent; border: 0; outline: none; color: rgba(88,105,81,1); }
+input.fn-42_12::placeholder, input.fn-43_14::placeholder { color: rgba(160,160,160,1); opacity: 1; }
+input.fn-43_14 { padding-right: 14%; }
+/* Back arrow (same size/position as on the sign up page) */
+.back-arrow { position: relative; grid-area: 1/1; align-self: start; justify-self: start; margin-left: 3.9801%; margin-top: 4.477612%; width: 12.437811%; height: 5.720824%; display: block; cursor: pointer; }
+.back-arrow img { display: block; width: 100%; height: 100%; }
