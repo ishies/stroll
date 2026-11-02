@@ -68,3 +68,6 @@ img{max-width:none}
 .fn-48_117{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:6.188925%;margin-top:52.76873%;width:85.667752%;height:12.873563%;min-width:0;min-height:0;font-family:'Amiri',sans-serif;font-weight:700;font-size:4.975124cqw;line-height:8.746269cqw;color:rgba(160,160,160,1);text-align:left;padding:0;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;display:flex;align-items:center;flex-wrap:nowrap}
 .fn-48_134{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:14.332248%;margin-top:123.452769%;width:85.667752%;height:12.873563%;min-width:0;min-height:0;font-family:'Amiri',sans-serif;font-weight:700;font-size:4.975124cqw;line-height:8.746269cqw;color:rgba(160,160,160,1);text-align:left;padding:0;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;display:flex;align-items:center;flex-wrap:nowrap}
 .fn-48_140{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:16.41791%;margin-top:161.940299%;width:3.731343%;height:1.716247%;min-width:0;min-height:0;display:block;object-fit:fill}
+
+/* Clickable buttons */
+a.fn-48_108 { text-decoration: none; color: inherit; cursor: pointer; }
