@@ -92,3 +92,6 @@ input.fn-43_14 { padding-right: 14%; }
 /* Back arrow (same size/position as on the sign up page) */
 .back-arrow { position: relative; grid-area: 1/1; align-self: start; justify-self: start; margin-left: 3.9801%; margin-top: 4.477612%; width: 12.437811%; height: 5.720824%; display: block; cursor: pointer; }
 .back-arrow img { display: block; width: 100%; height: 100%; }
+
+/* Clickable buttons */
+a.fn-45_32 { text-decoration: none; color: inherit; cursor: pointer; }
