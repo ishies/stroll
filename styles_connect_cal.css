@@ -66,3 +66,6 @@ img{max-width:none}
 .fn-65_496{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:24.429967%;margin-top:0%;width:62.86645%;height:100%;min-width:0;min-height:0;font-family:'Amiri',sans-serif;font-weight:700;font-size:4.975124cqw;line-height:8.746269cqw;color:rgba(121,147,110,1);text-align:center;padding:0;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;display:flex;align-items:center;flex-wrap:nowrap}
 .fn-62_729{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:17.412935%;margin-top:56.218905%;width:8.955224%;height:4.118993%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_62_729.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
 .fn-65_501{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:17.661692%;margin-top:78.109453%;width:8.208955%;height:4.23341%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_65_501.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
+
+/* Clickable buttons */
+a.fn-62_723, a.fn-62_733, a.fn-65_493 { text-decoration: none; color: inherit; cursor: pointer; }
