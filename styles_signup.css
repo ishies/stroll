@@ -88,3 +88,11 @@ img{max-width:none}
 .fn-45_70{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:0%;margin-top:0%;width:40.869565%;height:100%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_45_70.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
 .fn-45_71{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:59.130435%;margin-top:0%;width:40.869565%;height:100%;min-width:0;min-height:0;background-image:url("./assets/images/fill_nodefill_45_71.png");background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:grid;grid-template-columns:100%;grid-template-rows:100%}
 .fn-45_79{position:relative;grid-area:1/1;align-self:start;justify-self:start;margin-left:3.9801%;margin-top:4.477612%;width:12.437811%;height:5.720824%;min-width:0;min-height:0;overflow:hidden;display:block;object-fit:fill}
+
+/* Form inputs (replace the Figma text labels) */
+input.fn-45_59, input.fn-45_60, input.fn-45_73 { background: transparent; border: 0; outline: none; color: rgba(88,105,81,1); }
+input.fn-45_59::placeholder, input.fn-45_60::placeholder, input.fn-45_73::placeholder { color: rgba(160,160,160,1); opacity: 1; }
+input.fn-45_60, input.fn-45_73 { padding-right: 14%; }
+/* Back arrow link */
+a.fn-45_79 { display: block; cursor: pointer; }
+a.fn-45_79 img { display: block; width: 100%; height: 100%; }
